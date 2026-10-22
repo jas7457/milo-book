@@ -4,7 +4,7 @@ import { INK, limb, rand } from './style'
 import { eyesParts, headParts, SKIN, SKIN_SH } from '../milo/art'
 
 /*
- * Art for spread 6, "Super Milo": the city from above, the tall tower, the
+ * Art for spread 6, "Super Milo": the calm town square, box-folded buildings, the tall tower, the
  * kitten, the flying Super-Milo figure and the pieces of the sky world.
  * (Only superhero.tsx uses this file.)
  */
@@ -56,109 +56,8 @@ function windowGrid(
 /* ===========================  PRINTED SPREAD  ====================== */
 /* =================================================================== */
 
-type Roof = 'tank' | 'hvac' | 'garden' | 'solar' | 'pool' | 'plain' | 'dome' | 'sign'
-
-function roofDetail(kind: Roof, x: number, y: number, w: number, h: number, r: () => number) {
-  const cx = x + w / 2
-  const cy = y + h / 2
-  switch (kind) {
-    case 'tank': {
-      const rr = Math.min(w, h) * 0.26
-      return `<ellipse cx="${cx + 8}" cy="${cy + 14}" rx="${rr}" ry="${rr * 0.9}" fill="#3a2a5a" opacity=".3"/>
-        <circle cx="${cx}" cy="${cy}" r="${rr}" fill="#c98a52" stroke="${INK}" stroke-width="4"/>
-        <circle cx="${cx}" cy="${cy}" r="${rr * 0.74}" fill="#e0a56a"/>
-        ${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<path d="M${cx} ${cy} L ${(cx + Math.cos(i * 0.785) * rr).toFixed(0)} ${(cy + Math.sin(i * 0.785) * rr).toFixed(0)}" stroke="#a8703c" stroke-width="3"/>`).join('')}
-        <circle cx="${cx}" cy="${cy}" r="9" fill="#7a4e22" stroke="${INK}" stroke-width="3"/>`
-    }
-    case 'hvac': {
-      const n = Math.max(2, Math.floor(w / 120))
-      return Array.from({ length: n }, (_, i) => {
-        const bx = x + 30 + i * (w - 60) / n
-        return `<rect x="${bx + 6}" y="${cy - 28 + 8}" width="86" height="72" rx="8" fill="#3a2a5a" opacity=".3"/>
-          <rect x="${bx}" y="${cy - 36}" width="86" height="72" rx="8" fill="#cfd5de" stroke="${INK}" stroke-width="4"/>
-          <circle cx="${bx + 43}" cy="${cy}" r="26" fill="#9aa3b4" stroke="${INK}" stroke-width="3"/>
-          <path d="M${bx + 43} ${cy} m -22 0 l 22 -6 l 22 6 l -22 6 Z M${bx + 43} ${cy} m 0 -22 l 6 22 l -6 22 l -6 -22 Z" fill="#e8ecf2" stroke="${INK}" stroke-width="2"/>`
-      }).join('')
-    }
-    case 'garden':
-      return `<rect x="${x + 16}" y="${y + 16}" width="${w - 32}" height="${h - 32}" rx="14" fill="#6fbf6a" stroke="${INK}" stroke-width="4"/>
-        <path d="M${x + 40} ${cy} L ${x + w - 40} ${cy}" stroke="#e8d3a2" stroke-width="16" stroke-linecap="round"/>
-        ${Array.from({ length: 6 }, (_, i) => {
-          const tx = x + 50 + r() * (w - 100)
-          const ty = y + 40 + (i % 2 ? h * 0.55 : h * 0.12) + r() * 20
-          return `<ellipse cx="${tx + 10}" cy="${ty + 14}" rx="26" ry="20" fill="#2a1a4a" opacity=".25"/><circle cx="${tx}" cy="${ty}" r="${22 + r() * 8}" fill="#3f9a4a" stroke="${INK}" stroke-width="3"/><circle cx="${tx - 7}" cy="${ty - 7}" r="9" fill="#7fd07a"/>`
-        }).join('')}`
-    case 'solar': {
-      const rows = Math.max(2, Math.floor(h / 70))
-      return Array.from({ length: rows }, (_, j) => {
-        const sy = y + 26 + j * ((h - 52) / rows)
-        return `<rect x="${x + 28}" y="${sy}" width="${w - 56}" height="${(h - 52) / rows - 14}" fill="#2a56b8" stroke="${INK}" stroke-width="3"/>
-          ${Array.from({ length: Math.floor((w - 56) / 40) }, (_, i) => `<path d="M${x + 28 + (i + 1) * 40} ${sy} l 0 ${(h - 52) / rows - 14}" stroke="#7fa6ee" stroke-width="2"/>`).join('')}
-          <path d="M${x + 36} ${sy + 8} L ${x + 100} ${sy + 8}" stroke="#fff" stroke-width="4" opacity=".5" stroke-linecap="round"/>`
-      }).join('')
-    }
-    case 'pool':
-      return `<rect x="${x + 30}" y="${y + 24}" width="${w - 60}" height="${h - 48}" rx="18" fill="#f0f4f8" stroke="${INK}" stroke-width="4"/>
-        <rect x="${x + 42}" y="${y + 36}" width="${w - 84}" height="${h - 72}" rx="12" fill="#52c6e8"/>
-        <path d="M${x + 60} ${y + 56} q 20 -10 40 0 t 40 0 t 40 0" stroke="#bff2ff" stroke-width="5" fill="none" stroke-linecap="round"/>
-        <circle cx="${x + w - 80}" cy="${y + h - 58}" r="16" fill="#ff7a8a" stroke="${INK}" stroke-width="3"/>`
-    case 'dome':
-      return `<circle cx="${cx + 8}" cy="${cy + 12}" r="${Math.min(w, h) * 0.34}" fill="#2a1a4a" opacity=".25"/>
-        <circle cx="${cx}" cy="${cy}" r="${Math.min(w, h) * 0.34}" fill="#e8d6a8" stroke="${INK}" stroke-width="4"/>
-        <circle cx="${cx - 12}" cy="${cy - 12}" r="${Math.min(w, h) * 0.2}" fill="#fff2cf"/>
-        ${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M${cx} ${cy - Math.min(w, h) * 0.34} Q ${cx + (i - 2.5) * 20} ${cy} ${cx} ${cy + Math.min(w, h) * 0.34}" stroke="#c9b078" stroke-width="2.5" fill="none"/>`).join('')}
-        <circle cx="${cx}" cy="${cy}" r="7" fill="#ffd21f" stroke="${INK}" stroke-width="3"/>`
-    case 'sign':
-      return `<rect x="${x + 30}" y="${cy - 26}" width="${w - 60}" height="52" rx="8" fill="#fff2cf" stroke="${INK}" stroke-width="4"/>
-        <path d="M${x + 50} ${cy} L ${x + w - 50} ${cy}" stroke="#e8574a" stroke-width="10" stroke-dasharray="26 14" stroke-linecap="round"/>`
-    default:
-      return `${[0, 1].map((i) => `<rect x="${x + 36 + i * (w - 150)}" y="${y + 30}" width="64" height="${h - 60 > 70 ? 56 : 30}" rx="6" fill="#bfe3ff" stroke="${INK}" stroke-width="4"/><path d="M${x + 44 + i * (w - 150)} ${y + 40} l 24 0" stroke="#fff" stroke-width="5" opacity=".8" stroke-linecap="round"/>`).join('')}
-        <path d="M${x + 24} ${y + h - 24} L ${x + w - 24} ${y + h - 24}" stroke="#ffffff" stroke-width="5" opacity=".3" stroke-dasharray="14 12"/>`
-  }
-}
-
-const ROOFS = ['#f6b98f', '#ee8f8f', '#cba2dc', '#a2c9ec', '#f7d792', '#93d3b4', '#e096ac', '#f2a76a', '#b9b0ee']
-const KINDS: Roof[] = ['tank', 'hvac', 'garden', 'solar', 'pool', 'plain', 'hvac', 'garden', 'dome', 'sign', 'plain', 'tank']
-
-/** One building seen from above-and-in-front: roof on top, lit facade below. */
-function building(x: number, y: number, w: number, h: number, fh: number, color: string, kind: Roof, seed: number) {
-  const r = rand(seed)
-  const cols = Math.max(2, Math.floor(w / 62))
-  const cw = 34
-  const gx = (w - 30 - cols * cw) / Math.max(1, cols - 1)
-  return `
-    <!-- long sunset shadow on the street -->
-    <path d="M${x + w} ${y + 12} L ${x + w + 70} ${y + 52} L ${x + w + 70} ${y + h + fh + 58} L ${x + w} ${y + h + fh} Z M${x} ${y + h + fh} L ${x + 40} ${y + h + fh + 56} L ${x + w + 70} ${y + h + fh + 58} L ${x + w} ${y + h + fh} Z" fill="#241a50" opacity=".3"/>
-    <!-- facade -->
-    <rect x="${x}" y="${y + h - 6}" width="${w}" height="${fh + 6}" fill="${color}" stroke="${INK}" stroke-width="5"/>
-    <rect x="${x}" y="${y + h - 6}" width="${w}" height="${fh + 6}" fill="#2a1d5e" opacity=".42"/>
-    <rect x="${x}" y="${y + h - 6}" width="${w}" height="12" fill="#2a1d5e" opacity=".25"/>
-    ${Array.from({ length: cols }, (_, i) => {
-      const wx = x + 15 + i * (cw + gx)
-      const on = r() < 0.62
-      return `<rect x="${wx}" y="${y + h + 10}" width="${cw}" height="${Math.max(10, fh - 26)}" rx="3" fill="${on ? '#ffdd80' : '#3a4688'}" stroke="${INK}" stroke-width="3"/>`
-    }).join('')}
-    <!-- roof -->
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${color}" stroke="${INK}" stroke-width="5"/>
-    <rect x="${x + 9}" y="${y + 9}" width="${w - 18}" height="${h - 18}" rx="5" fill="#fff" opacity=".28" stroke="${INK}" stroke-width="2.5"/>
-    <rect x="${x + 4}" y="${y + 4}" width="${w - 8}" height="12" rx="5" fill="#fff" opacity=".4"/>
-    ${roofDetail(kind, x, y, w, h, r)}`
-}
-
-function pathDots(d: string, w = 14, dash = '2 30', color = '#fff6c8') {
-  return `<path d="${d}" stroke="${INK}" stroke-width="${w + 8}" stroke-linecap="round" stroke-dasharray="${dash}" fill="none" opacity=".55"/>
-    <path d="${d}" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="${dash}" fill="none"/>`
-}
-
 const cloudShape = (cx: number, cy: number, s: number) =>
   `M${cx - 170 * s} ${cy + 40 * s} Q ${cx - 230 * s} ${cy + 40 * s} ${cx - 210 * s} ${cy - 10 * s} Q ${cx - 190 * s} ${cy - 50 * s} ${cx - 130 * s} ${cy - 38 * s} Q ${cx - 120 * s} ${cy - 110 * s} ${cx - 50 * s} ${cy - 100 * s} Q ${cx} ${cy - 160 * s} ${cx + 70 * s} ${cy - 110 * s} Q ${cx + 140 * s} ${cy - 130 * s} ${cx + 160 * s} ${cy - 50 * s} Q ${cx + 230 * s} ${cy - 40 * s} ${cx + 214 * s} ${cy + 14 * s} Q ${cx + 210 * s} ${cy + 44 * s} ${cx + 170 * s} ${cy + 40 * s} Z`
-
-function paintedCloud(cx: number, cy: number, s: number) {
-  return `<g transform="translate(70 80)" opacity=".28"><path d="${cloudShape(cx, cy, s)}" fill="#2a1d5e"/></g>
-    <path d="${cloudShape(cx, cy, s)}" fill="#fff8f4" stroke="#e8d4ee" stroke-width="5"/>
-    <path d="M${cx - 190 * s} ${cy + 30 * s} Q ${cx} ${cy + 62 * s} ${cx + 200 * s} ${cy + 30 * s} Q ${cx + 190 * s} ${cy + 44 * s} ${cx + 170 * s} ${cy + 40 * s} L ${cx - 170 * s} ${cy + 40 * s} Z" fill="#f2c9e0" opacity=".85"/>
-    <path d="M${cx - 90 * s} ${cy - 66 * s} Q ${cx - 40 * s} ${cy - 100 * s} ${cx + 10 * s} ${cy - 84 * s}" stroke="#fff" stroke-width="${10 * s}" fill="none" stroke-linecap="round" opacity=".9"/>`
-}
 
 function comicBurst(cx: number, cy: number, R: number, r: number, n: number, fill: string, stroke: string, rot = 0) {
   return `<path d="${starPath(cx, cy, R, r, n, rot)}" fill="${fill}" stroke="${stroke}" stroke-width="10" stroke-linejoin="round"/>`
@@ -169,119 +68,160 @@ function bird(x: number, y: number, s: number, rot = 0) {
     <path d="M-46 8 Q -26 -26 0 4 Q 26 -26 46 8" stroke="#fff6e8" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>`
 }
 
+
+
+/**
+ * The printed pages: a calm, sunny town square. Warm paving slabs, a soft
+ * street along the front edge and a few big round planters. Quiet colours:
+ * it is the floor the paper buildings stand on, not a pattern.
+ */
 export const heroSpreadArt = (() => {
   const r = rand(66)
-  // street grid: block columns / rows
-  const colW: number[] = []
-  for (let x = -40, i = 0; x < 2600; i++) {
-    const w = [330, 250, 400, 290, 360, 270][i % 6]
-    colW.push(w)
-    x += w + 64
-  }
-  let blocks = ''
-  let ry = 350
-  let row = 0
-  while (ry < 1800) {
-    const bh = [170, 150, 190, 160][row % 4]
-    let x = -40
-    colW.forEach((w, ci) => {
-      const kind = KINDS[(ci * 5 + row * 3) % KINDS.length]
-      const color = ROOFS[(ci * 3 + row * 4 + Math.floor(r() * 3)) % ROOFS.length]
-      const inset = 6
-      blocks += building(x + inset, ry, w - inset * 2, bh, 38 + Math.floor(r() * 20), color, kind, ci * 13 + row * 7 + 3)
-      x += w + 64
-    })
-    ry += bh + 60 + 70
-    row++
-  }
-  // street details: dashed centre lines, crossings and lamps (low-key: buildings cover most)
-  const lamps = Array.from({ length: 16 }, () => {
-    const x = 80 + r() * 2400
-    const y = 400 + r() * 1300
-    return `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="26" fill="#ffd27a" opacity=".22"/><circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="7" fill="#fff0b8"/>`
-  }).join('')
-  const stars = Array.from({ length: 30 }, () => {
-    const x = 60 + r() * 2440
-    const y = 380 + r() * 1320
-    const k = r()
-    return k < 0.5
-      ? `<path d="${starPath(x, y, 14 + r() * 12)}" fill="#fff2a0" stroke="#e9a23b" stroke-width="3" stroke-linejoin="round"/>`
-      : `<path d="M${x} ${y - 20} Q ${x + 3} ${y - 3} ${x + 20} ${y} Q ${x + 3} ${y + 3} ${x} ${y + 20} Q ${x - 3} ${y + 3} ${x - 20} ${y} Q ${x - 3} ${y - 3} ${x} ${y - 20} Z" fill="#fffbe0" stroke="#f3d27a" stroke-width="2"/>`
-  }).join('')
-
-  // flight path: launch pad → tower → the loop → landing pad (book coords → page px)
-  const px = (x: number) => ((x + 1.6) * 800).toFixed(0)
-  const pz = (z: number) => ((z + 1.1) * 800).toFixed(0)
-  const launch = [px(0.3), pz(0.5)]
-  const land = [px(1.15), pz(0.58)]
-  const swoosh1 = `M${launch[0]} ${launch[1]} C ${px(0.62)} ${pz(0.4)} ${px(0.12)} ${pz(0.0)} ${px(0.42)} ${pz(-0.3)}`
-  const swoosh2 = `M${px(0.5)} ${pz(-0.3)} C ${px(0.9)} ${pz(-0.34)} ${px(1.2)} ${pz(-0.1)} ${px(1.0)} ${pz(0.04)} C ${px(0.84)} ${pz(0.14)} ${px(0.86)} ${pz(-0.14)} ${px(1.14)} ${pz(-0.1)} C ${px(1.5)} ${pz(-0.06)} ${px(1.5)} ${pz(0.32)} ${land[0]} ${land[1]}`
-
-  const pad = (x: string, y: string, kind: 'go' | 'safe') => `
-    <g transform="translate(${x} ${y})">
-      <ellipse cx="14" cy="26" rx="150" ry="52" fill="#241a50" opacity=".3"/>
-      <circle r="140" fill="${kind === 'go' ? '#3a6fd8' : '#e8574a'}" stroke="${INK}" stroke-width="7"/>
-      <circle r="112" fill="#fff6e4" stroke="${INK}" stroke-width="5"/>
-      <circle r="84" fill="${kind === 'go' ? '#3a6fd8' : '#e8574a'}" opacity=".9"/>
-      <circle r="56" fill="#fff6e4"/>
-      <path d="M-130 -30 L -150 -30 M130 -30 L 150 -30" stroke="#ffd21f" stroke-width="10" stroke-linecap="round"/>
-      ${Array.from({ length: 12 }, (_, i) => `<circle cx="${(Math.cos(i * 0.5236) * 126).toFixed(0)}" cy="${(Math.sin(i * 0.5236) * 126).toFixed(0)}" r="6" fill="#ffd21f"/>`).join('')}
-      ${
-        kind === 'go'
-          ? `<path d="M-30 20 L -30 -22 L 0 8 L 30 -22 L 30 20" stroke="${CAPE}" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
-          : `<path d="M0 26 C -46 -4 -52 -30 -30 -40 C -14 -46 -2 -34 0 -26 C 2 -34 14 -46 30 -40 C 52 -30 46 -4 0 26 Z" fill="#ff5a7a" stroke="${INK}" stroke-width="5"/>`
-      }
+  // paving slabs: big, low contrast
+  let slabs = ''
+  const sw = 320
+  const sh = 200
+  for (let y = 0, j = 0; y < 1500; y += sh, j++)
+    for (let x = (j % 2) * -sw * 0.5; x < 2560; x += sw)
+      slabs += `<rect x="${(x + 6).toFixed(0)}" y="${y + 6}" width="${sw - 12}" height="${sh - 12}" rx="22" fill="${r() < 0.5 ? '#fbeee0' : '#f9e6d6'}" stroke="#ecd3c0" stroke-width="5"/>`
+  const planter = (x: number, y: number, s: number) => `<g transform="translate(${x} ${y}) scale(${s})">
+      <ellipse cx="10" cy="64" rx="150" ry="40" fill="#8a5a50" opacity=".18"/>
+      <path d="M-120 20 L 120 20 L 104 76 L -104 76 Z" fill="#d99a82" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M-120 20 L 120 20 L 116 38 L -116 38 Z" fill="#efb8a0"/>
+      <ellipse cx="0" cy="20" rx="120" ry="30" fill="#7fc47a" stroke="${INK}" stroke-width="7"/>
+      <circle cx="-60" cy="-6" r="58" fill="#5fae62" stroke="${INK}" stroke-width="7"/><circle cx="30" cy="-30" r="70" fill="#6cbb6a" stroke="${INK}" stroke-width="7"/><circle cx="84" cy="2" r="48" fill="#5fae62" stroke="${INK}" stroke-width="7"/>
+      <circle cx="-76" cy="-26" r="22" fill="#9ae092" opacity=".85"/><circle cx="14" cy="-54" r="26" fill="#9ae092" opacity=".85"/>
+      <circle cx="-30" cy="6" r="9" fill="#ff8aa8"/><circle cx="58" cy="-12" r="9" fill="#ffd96a"/><circle cx="90" cy="14" r="8" fill="#ff8aa8"/>
     </g>`
-
   return svgDoc(
     2560,
     1760,
-    `<linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">
-       <stop offset="0" stop-color="#ffb27a"/><stop offset=".2" stop-color="#ff9aa8"/><stop offset=".55" stop-color="#7a64b8"/><stop offset="1" stop-color="#3a2f78"/>
-     </linearGradient>
-     <linearGradient id="haze" x1="0" y1="0" x2="0" y2="1">
-       <stop offset="0" stop-color="#ffd09a"/><stop offset="1" stop-color="#ff9aa8"/>
-     </linearGradient>
-     <radialGradient id="sunG" cx="520" cy="300" r="560" gradientUnits="userSpaceOnUse">
-       <stop offset="0" stop-color="#fff2b0" stop-opacity=".95"/><stop offset=".4" stop-color="#ffcf8a" stop-opacity=".5"/><stop offset="1" stop-color="#ffcf8a" stop-opacity="0"/>
-     </radialGradient>
-     <rect width="2560" height="1760" fill="url(#dusk)"/>
-     <!-- the far horizon, hazy -->
-     <rect width="2560" height="420" fill="url(#haze)"/>
-     <circle cx="520" cy="300" r="560" fill="url(#sunG)"/>
-     ${Array.from({ length: 34 }, (_, i) => {
-       const x = i * 80
-       const h = 40 + ((i * 53) % 90)
-       return `<rect x="${x}" y="${330 - h}" width="64" height="${h + 90}" fill="#c98ab8" opacity=".6"/>`
-     }).join('')}
-     <!-- city blocks, seen from high above -->
-     ${blocks}
-     ${lamps}
-     <!-- cloud shadows + clouds drifting over the city -->
-     ${paintedCloud(300, 960, 1.0)}${paintedCloud(2250, 520, 0.95)}${paintedCloud(1850, 1540, 0.8)}${paintedCloud(760, 480, 0.7)}
-     <!-- the flight path -->
-     ${pad(launch[0], launch[1], 'go')}
-     ${pad(land[0], land[1], 'safe')}
-     ${pathDots(swoosh1)}${pathDots(swoosh2)}
-     <path d="M${px(0.42)} ${pz(-0.3)} l -18 70 l 80 -40 Z" fill="#fff6c8" stroke="${INK}" stroke-width="5" stroke-linejoin="round" transform="rotate(-70 ${px(0.42)} ${pz(-0.3)})"/>
-     <!-- comic lettering -->
-     <g transform="translate(1720 960) rotate(-9) scale(0.85)">
-       ${comicBurst(0, 0, 250, 150, 13, '#ffd21f', INK, 0.2)}
-       ${comicBurst(0, 0, 215, 130, 13, '#fff08a', 'none', 0.2)}
-       <text x="0" y="40" text-anchor="middle" font-family="${ROUND}" font-weight="900" font-size="150" fill="${INK}" stroke="${INK}" stroke-width="26" stroke-linejoin="round" transform="translate(7 9)">ZOOM!</text>
-       <text x="0" y="40" text-anchor="middle" font-family="${ROUND}" font-weight="900" font-size="150" fill="#e8322b" stroke="#fff" stroke-width="22" stroke-linejoin="round" paint-order="stroke">ZOOM!</text>
-     </g>
-     <g transform="translate(2280 880) rotate(8)">
-       <path d="M-130 -40 L -100 -90 L -50 -60 L 0 -110 L 50 -60 L 110 -90 L 130 -30 L 160 10 L 110 40 L 120 90 L 40 70 L 0 110 L -50 70 L -120 90 L -110 30 L -160 0 Z" fill="#ff7ab0" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/>
-       <text x="0" y="18" text-anchor="middle" font-family="${ROUND}" font-weight="900" font-size="64" fill="#fff" stroke="${INK}" stroke-width="12" stroke-linejoin="round" paint-order="stroke">WHOOSH</text>
-     </g>
-     <g transform="translate(1380 700) rotate(-14)">
-       <text x="0" y="0" text-anchor="middle" font-family="${ROUND}" font-weight="900" font-size="74" fill="#fff6c8" stroke="${INK}" stroke-width="14" stroke-linejoin="round" paint-order="stroke">UP, UP!</text>
-     </g>
-     ${bird(480, 360, 1.0, -8)}${bird(560, 330, 0.7, -4)}${bird(1840, 380, 1.1, 6)}${bird(1930, 340, 0.8, 8)}${bird(2060, 400, 0.6, 4)}
-     ${bird(1060, 930, 0.7, -14)}${bird(1130, 900, 0.5, -10)}
-     ${stars}`,
+    `<linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6dfd2"/><stop offset=".55" stop-color="#fbeee2"/><stop offset="1" stop-color="#f6e2d4"/></linearGradient>
+     <radialGradient id="pgl" cx="1500" cy="900" r="1100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff6d8" stop-opacity=".8"/><stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>
+     <rect width="2560" height="1760" fill="url(#pg)"/>
+     ${slabs}
+     <rect width="2560" height="1760" fill="url(#pgl)"/>
+     <!-- the street along the front edge -->
+     <rect x="0" y="1500" width="2560" height="40" fill="#e4c6b6"/>
+     <rect x="0" y="1540" width="2560" height="220" fill="#cdbfe0"/>
+     <rect x="0" y="1540" width="2560" height="14" fill="#b7a6d2"/>
+     <path d="M0 1652 L 2560 1652" stroke="#fff3c8" stroke-width="12" stroke-dasharray="120 90" stroke-linecap="round"/>
+     <!-- planters in the far corners -->
+     ${planter(220, 300, 1.05)}${planter(2380, 360, 0.95)}${planter(2250, 1180, 0.8)}`,
     { grain: 1 },
+  )
+})()
+
+/** the one sound-word sticker: pops up when Milo takes off */
+export const zoomBurst = svgDoc(
+  560,
+  400,
+  `<g transform="translate(280 200) rotate(-8)">
+     ${comicBurst(0, 0, 190, 112, 13, '#ffd21f', INK, 0.2)}
+     ${comicBurst(0, 0, 162, 98, 13, '#fff08a', 'none', 0.2)}
+     <text x="0" y="30" text-anchor="middle" font-family="${ROUND}" font-weight="900" font-size="112" fill="${INK}" stroke="${INK}" stroke-width="20" stroke-linejoin="round" transform="translate(5 6)">ZOOM!</text>
+     <text x="0" y="30" text-anchor="middle" font-family="${ROUND}" font-weight="900" font-size="112" fill="#e8322b" stroke="#fff" stroke-width="16" stroke-linejoin="round" paint-order="stroke">ZOOM!</text>
+   </g>`,
+  { cut: 5 },
+)
+
+/* =================================================================== */
+/* ===========================  BOX-FOLDED BUILDINGS  ================ */
+/* =================================================================== */
+
+/**
+ * The side wall of a box-folded building (glued to the edge of the front).
+ * `flip` draws it for the left edge (the near corner is then on the right).
+ */
+export function sideFace(o: {
+  w: number; h: number; body: string; shade: string; rim: string; seed: number; flip?: boolean
+  cw?: number; ch?: number; lit?: number; litCol?: string; darkCol?: string; frame?: string; band?: string; base?: string; top?: string
+}) {
+  const { w, h, body, shade, rim, seed, flip, cw = 40, ch = 54, lit = 0.5, litCol = '#ffe08a', darkCol = '#33407f', frame = '#f6e6c8', band, base = shade, top = shade } = o
+  const gx = 26
+  const gy = 40
+  const cols = Math.max(1, Math.floor((w - 70 + gx) / (cw + gx)))
+  const rows = Math.max(1, Math.floor((h - 190 + gy) / (ch + gy)))
+  const x0 = (w - (cols * (cw + gx) - gx)) / 2
+  const bands = band ? Array.from({ length: Math.floor(h / 360) }, (_, i) => `<rect x="0" y="${300 + i * 340}" width="${w}" height="16" fill="${band}" stroke="${INK}" stroke-width="4"/>`).join('') : ''
+  const inner = `<linearGradient id="sf" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${body}"/><stop offset="1" stop-color="${shade}"/></linearGradient>
+     <rect x="0" y="0" width="${w}" height="${h}" fill="url(#sf)" stroke="${INK}" stroke-width="6"/>
+     <rect x="0" y="0" width="12" height="${h}" fill="${rim}" opacity=".55"/>
+     <rect x="0" y="0" width="${w}" height="34" fill="${top}" stroke="${INK}" stroke-width="5"/>
+     <rect x="0" y="0" width="${w}" height="9" fill="#fff" opacity=".35"/>
+     ${bands}
+     ${windowGrid(x0, 78, cols, rows, cw, ch, gx, gy, seed, lit, litCol, darkCol, frame, false)}
+     <rect x="0" y="${h - 36}" width="${w}" height="36" fill="${base}" stroke="${INK}" stroke-width="5"/>
+     <rect x="${w - 40}" y="34" width="40" height="${h - 70}" fill="#1c1450" opacity=".16"/>`
+  return svgDoc(w, h, flip ? `<g transform="translate(${w} 0) scale(-1 1)">${inner}</g>` : inner, { cut: 5 })
+}
+
+/** The flat top of a box-folded building, seen from above (front edge at the bottom). */
+export function roofTopArt(o: { w: number; d: number; base: string; rim: string; kind: 'garden' | 'plain' | 'launch' | 'tower'; seed: number }) {
+  const { w, d, base, rim, kind, seed } = o
+  const r = rand(seed)
+  let extra = ''
+  const dots = Array.from({ length: 70 }, () => `<circle cx="${(30 + r() * (w - 60)).toFixed(0)}" cy="${(30 + r() * (d - 60)).toFixed(0)}" r="${(2 + r() * 3).toFixed(1)}" fill="#fff" opacity=".28"/>`).join('')
+  if (kind === 'garden') {
+    extra = `<rect x="${w * 0.12}" y="${d * 0.18}" width="${w * 0.76}" height="${d * 0.56}" rx="24" fill="#7fc47a" stroke="${INK}" stroke-width="6"/>
+      ${[0.24, 0.42, 0.6, 0.76].map((u, i) => `<circle cx="${w * u}" cy="${d * (0.36 + (i % 2) * 0.2)}" r="${d * 0.1}" fill="#4fa456" stroke="${INK}" stroke-width="5"/><circle cx="${w * u - 10}" cy="${d * (0.36 + (i % 2) * 0.2) - 10}" r="${d * 0.035}" fill="#9ae092"/>`).join('')}
+      <path d="M${w * 0.5} ${d * 0.74} L ${w * 0.5} ${d} " stroke="#e8d4b0" stroke-width="34"/>`
+  } else if (kind === 'launch') {
+    extra = `<rect x="${w * 0.06}" y="${d * 0.1}" width="${w * 0.88}" height="${d * 0.8}" rx="18" fill="none" stroke="#fff6c8" stroke-width="9" stroke-dasharray="36 22" opacity=".85"/>
+      <g transform="translate(${w * 0.82} ${d * 0.34})"><rect x="-44" y="-30" width="88" height="60" rx="8" fill="#cfd5de" stroke="${INK}" stroke-width="5"/><circle cx="0" cy="0" r="20" fill="#9aa3b4" stroke="${INK}" stroke-width="4"/><path d="M-12 0 L 12 0 M0 -12 L 0 12" stroke="${INK}" stroke-width="3"/></g>
+      <g transform="translate(${w * 0.9} ${d * 0.72})"><circle cx="0" cy="0" r="30" fill="#b8553f" stroke="${INK}" stroke-width="5"/><circle cx="0" cy="0" r="17" fill="#7a3a2c"/></g>`
+  } else if (kind === 'tower') {
+    extra = `<rect x="${w * 0.1}" y="${d * 0.14}" width="${w * 0.8}" height="${d * 0.72}" rx="10" fill="none" stroke="${INK}" stroke-width="5" opacity=".55"/>
+      <g transform="translate(${w * 0.28} ${d * 0.5})"><rect x="-34" y="-26" width="68" height="52" rx="6" fill="#cfd5de" stroke="${INK}" stroke-width="5"/><circle r="16" fill="#9aa3b4" stroke="${INK}" stroke-width="4"/></g>`
+  } else {
+    extra = `<g transform="translate(${w * 0.28} ${d * 0.45})"><rect x="-40" y="-30" width="80" height="60" rx="6" fill="#cfd5de" stroke="${INK}" stroke-width="5"/><circle r="20" fill="#9aa3b4" stroke="${INK}" stroke-width="4"/></g>
+      <g transform="translate(${w * 0.7} ${d * 0.5})"><rect x="-26" y="-26" width="52" height="52" rx="4" fill="#b8553f" stroke="${INK}" stroke-width="5"/><rect x="-18" y="-18" width="36" height="36" fill="#8a3f33"/></g>`
+  }
+  return svgDoc(
+    w,
+    d,
+    `<rect x="0" y="0" width="${w}" height="${d}" fill="${rim}" stroke="${INK}" stroke-width="6"/>
+     <rect x="16" y="16" width="${w - 32}" height="${d - 32}" fill="${base}" stroke="${INK}" stroke-width="4"/>
+     <rect x="16" y="16" width="${w - 32}" height="22" fill="#000" opacity=".1"/>
+     ${dots}${extra}`,
+    { cut: 5 },
+  )
+}
+
+/** Milo's launch pad: a low corner shop, front wall (900×360). */
+export const launchShop = (() => {
+  const W = 900
+  const H = 360
+  return svgDoc(
+    W,
+    H,
+    `<linearGradient id="ls" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd2bc"/><stop offset=".6" stop-color="#f6b69c"/><stop offset="1" stop-color="#e49a88"/></linearGradient>
+     <!-- wall -->
+     <rect x="14" y="30" width="${W - 28}" height="${H - 30}" fill="url(#ls)" stroke="${INK}" stroke-width="6"/>
+     <rect x="14" y="30" width="${W - 28}" height="30" fill="#c9524a" stroke="${INK}" stroke-width="5"/>
+     <rect x="22" y="34" width="${W - 44}" height="8" rx="4" fill="#ef8378"/>
+     <rect x="${W - 90}" y="60" width="76" height="${H - 60}" fill="#7a3a50" opacity=".16"/>
+     <rect x="20" y="60" width="12" height="${H - 60}" fill="#fff6e0" opacity=".7"/>
+     <!-- sign -->
+     <rect x="250" y="70" width="400" height="62" rx="16" fill="#26306a" stroke="${INK}" stroke-width="6"/>
+     <rect x="262" y="80" width="376" height="42" rx="10" fill="none" stroke="#ffd21f" stroke-width="3" stroke-dasharray="12 9"/>
+     <text x="450" y="118" text-anchor="middle" font-family="${ROUND}" font-weight="900" font-size="44" fill="#ffd96a" letter-spacing="4">BAKERY</text>
+     <!-- awning -->
+     <path d="M60 150 L 840 150 L 868 218 L 32 218 Z" fill="#fff" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>
+     ${Array.from({ length: 10 }, (_, i) => `<path d="M${60 + i * 78} 150 L ${32 + i * 83.6} 218 L ${32 + (i + 0.5) * 83.6} 218 L ${60 + (i + 0.5) * 78} 150 Z" fill="#e8574a"/>`).join('')}
+     <path d="M60 150 L 840 150 L 868 218 L 32 218 Z" fill="none" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>
+     <path d="M32 218 Q 78 238 124 218 Q 170 238 216 218 Q 262 238 308 218 Q 354 238 400 218 Q 446 238 492 218 Q 538 238 584 218 Q 630 238 676 218 Q 722 238 768 218 Q 814 238 868 218" fill="#fff" stroke="${INK}" stroke-width="5"/>
+     <!-- shop window + door -->
+     <rect x="60" y="238" width="320" height="108" rx="8" fill="#ffe9a8" stroke="${INK}" stroke-width="6"/>
+     <rect x="520" y="238" width="320" height="108" rx="8" fill="#ffe9a8" stroke="${INK}" stroke-width="6"/>
+     <path d="M70 248 L 150 248 L 70 330 Z M530 248 L 610 248 L 530 330 Z" fill="#fff" opacity=".35"/>
+     <ellipse cx="150" cy="322" rx="46" ry="20" fill="#c98a52" stroke="${INK}" stroke-width="5"/><ellipse cx="150" cy="312" rx="40" ry="16" fill="#e8b878"/>
+     <circle cx="270" cy="318" r="24" fill="#e8b878" stroke="${INK}" stroke-width="5"/><circle cx="270" cy="318" r="9" fill="#a8453a"/>
+     <path d="M600 332 q 34 -52 66 0 Z M680 332 q 34 -52 66 0 Z" fill="#e8b878" stroke="${INK}" stroke-width="5"/>
+     <rect x="410" y="240" width="80" height="${H - 240}" rx="8" fill="#7a3f33" stroke="${INK}" stroke-width="6"/>
+     <rect x="420" y="250" width="60" height="${H - 250}" fill="#c98a52" stroke="${INK}" stroke-width="4"/><circle cx="470" cy="312" r="5" fill="#ffd21f"/>
+     <rect x="14" y="${H - 20}" width="${W - 28}" height="20" fill="#8a6a5a" stroke="${INK}" stroke-width="4"/>`,
+    { cut: 5 },
   )
 })()
 
@@ -328,7 +268,7 @@ function skylineSvg(W: number, H: number, seed: number, body: string, rim: strin
   return svgDoc(W, H, out, { cut: 5 })
 }
 
-export const skylineFar = skylineSvg(3000, 900, 12, '#b78ccf', '#ffc2a0', 0.28, 360, 760, false)
+export const skylineFar = skylineSvg(3000, 900, 12, '#dcc8e6', '#ffe0cc', 0.06, 300, 640, false)
 export const skylineNear = (() => {
   const base = skylineSvg(3000, 800, 31, '#6a56b4', '#ff9a8a', 0.5, 230, 560)
   return base
@@ -619,6 +559,67 @@ const diamond = (cx: number, cy: number, s: number) => `<g transform="translate(
     <path d="M0 -50 L 46 -10 L 0 52 L -46 -10 Z" fill="${EMBLEM}" stroke="${CAPE}" stroke-width="7" stroke-linejoin="round"/>
     <path d="M-20 18 L -20 -16 L 0 4 L 20 -16 L 20 18" stroke="${CAPE}" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   </g>`
+
+/** Super-Milo standing tall on the rooftop, fists on his hips (cape is a separate piece). */
+export const STAND = { w: 420, h: 650 }
+export const STAND_K = 1 / 640
+/** where the cape hangs from (art px): between the shoulders, just under the neck */
+export const STAND_NECK = { x: 212, y: 200 }
+
+export const heroStand = (() => {
+  const sock = '#f6f4ee'
+  return svgDoc(
+    STAND.w,
+    STAND.h,
+    `<!-- legs -->
+     ${limb('M178 400 L 176 560', SKIN, 34, 5)}
+     ${limb('M246 400 L 250 560', SKIN, 34, 5)}
+     <path d="M158 536 L 198 536 L 200 586 Q 200 604 182 604 L 140 604 Q 124 604 128 590 Q 134 574 158 570 Z" fill="${sock}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+     <path d="M226 536 L 270 536 L 270 570 Q 294 574 298 590 Q 300 604 284 604 L 242 604 Q 226 604 226 586 Z" fill="${sock}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+     <path d="M160 548 L 198 548 M228 548 L 268 548" stroke="#d6d2c6" stroke-width="5"/>
+     <!-- shorts -->
+     <path d="M140 338 L 288 338 L 298 428 Q 262 440 228 430 L 214 392 L 198 430 Q 164 440 130 428 Z" fill="#8f9297" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+     <path d="M146 346 Q 214 358 282 346" stroke="#b6b9be" stroke-width="7" fill="none" stroke-linecap="round"/>
+     <path d="M214 352 L 214 392" stroke="#7a7d82" stroke-width="4"/>
+     <!-- far arm (fist on hip) -->
+     ${limb('M152 222 Q 90 262 106 318 Q 118 340 148 344', SKIN_SH, 28, 5)}
+     <circle cx="150" cy="346" r="20" fill="${SKIN_SH}" stroke="${INK}" stroke-width="5"/>
+     <!-- neck -->
+     <rect x="194" y="160" width="36" height="46" rx="12" fill="${SKIN_SH}"/>
+     <!-- tank-top torso -->
+     <path d="M146 196 L 182 196 Q 212 232 242 196 L 280 196 Q 290 232 296 262 L 290 352 Q 214 370 136 352 L 130 262 Q 136 232 146 196 Z" fill="#a9acb2" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+     <path d="M150 204 Q 214 216 276 204" stroke="#cfd2d8" stroke-width="8" fill="none" stroke-linecap="round" opacity=".9"/>
+     <path d="M140 342 Q 214 362 288 342" stroke="#8c8f94" stroke-width="7" fill="none" stroke-linecap="round"/>
+     <g stroke="#979aa0" stroke-width="2.5" opacity=".7"><path d="M172 214 L 170 346"/><path d="M214 216 L 214 352"/><path d="M256 214 L 258 346"/></g>
+     ${diamond(214, 268, 0.86)}
+     <!-- near arm (fist on hip) -->
+     ${limb('M276 222 Q 338 262 322 318 Q 310 340 280 344', SKIN, 28, 5)}
+     <circle cx="278" cy="346" r="21" fill="${SKIN}" stroke="${INK}" stroke-width="5"/>
+     <path d="M262 340 Q 270 350 280 352" stroke="${SKIN_SH}" stroke-width="4" fill="none" stroke-linecap="round"/>
+     <!-- head: Milo with mask, chin up -->
+     <g transform="translate(214 112) rotate(-4) scale(0.37) translate(-200 -225)">
+       <path d="M62 196 Q -10 170 -64 198 Q -20 218 -70 250 Q 0 246 66 226 Z" fill="${MASK}" stroke="${INK}" stroke-width="9" stroke-linejoin="round"/>
+       ${headParts}
+       <g transform="translate(50 160)">
+         <path d="M10 40 Q 150 0 290 40 Q 300 80 270 96 Q 220 108 172 80 Q 150 70 128 80 Q 80 108 30 96 Q 0 80 10 40 Z" fill="${MASK}" stroke="${INK}" stroke-width="9" stroke-linejoin="round"/>
+         <path d="M34 42 Q 150 12 266 42" stroke="#5f93f2" stroke-width="8" fill="none" stroke-linecap="round" opacity=".85"/>
+       </g>
+       <g transform="translate(70 165)">${eyesParts}</g>
+     </g>`,
+    { cut: 5 },
+  )
+})()
+
+/** The cape hanging behind the standing hero, blown to the left (same canvas as the figure). */
+export const heroStandCape = svgDoc(
+  STAND.w,
+  STAND.h,
+  `<path d="M150 196 Q 214 214 280 196 Q 300 290 286 400 Q 270 500 232 576 Q 214 556 196 592 Q 170 552 148 584 Q 120 540 96 560 Q 60 520 58 470 Q 40 400 70 330 Q 100 250 150 196 Z" fill="${CAPE}" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>
+   <path d="M150 196 Q 214 214 280 196 Q 296 270 290 340 Q 220 330 150 330 Q 120 280 150 196 Z" fill="${CAPE_SH}" opacity=".5"/>
+   <path d="M170 220 Q 120 300 112 420 M214 232 Q 196 340 196 470 M250 232 Q 262 360 238 500" stroke="${CAPE_SH}" stroke-width="6" fill="none" stroke-linecap="round" opacity=".7"/>
+   <path d="M160 204 Q 214 222 270 204" stroke="#f0584a" stroke-width="9" fill="none" stroke-linecap="round" opacity=".9"/>`,
+  { cut: 4 },
+)
 
 /** Milo in flight, facing right, arms out in front. */
 export const superMilo = (() => {

@@ -5,42 +5,55 @@ import gsap from 'gsap'
 import { sparkle, heart } from '../../art/kit'
 import { svgTexture } from '../../art/texture'
 import {
-  CAPE_ART, HERO, HERO_K, KITTEN, TOWER, TOWER_KITTEN, TOWER_LIGHT, antennaLight, arrowHint, balloon, brickBlock, cloudSea,
-  flockV, foregroundRoof, glassOffice, heroCape, heroSpreadArt, kitten, meowBubble, puffyCloud, skylineFar, skylineNear, worldSkyFar, worldSkyNear,
-  songBird, speedLines, sunBig, sunGlow, superMilo, tallTower, worldTower,
+  CAPE_ART, HERO, HERO_K, KITTEN, STAND, STAND_K, STAND_NECK, TOWER, TOWER_KITTEN, TOWER_LIGHT, antennaLight, balloon, brickBlock, cloudSea,
+  flockV, foregroundRoof, glassOffice, heroCape, heroSpreadArt, heroStand, heroStandCape, kitten, launchShop, meowBubble, puffyCloud,
+  roofTopArt, sideFace, skylineFar, worldSkyFar, worldSkyNear, songBird, speedLines, sunBig, sunGlow, superMilo, tallTower, worldTower, zoomBurst,
 } from '../../art/hero'
 import { Part, PopCard } from '../../popup/PopCard'
 import { PullTab } from '../../popup/PullTab'
 import { useSpread } from '../../popup/SpreadContext'
 import { anim } from '../../state'
-import { clamp01, easeOutBack } from '../../anim/ease'
+import { clamp01, easeOutBack, windowed } from '../../anim/ease'
 import { bus } from '../../bus'
 import { beat } from '../../progress'
+import { heard } from '../../cue'
 import { Cutout } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
 
 /*
  * Spread 6 — "Super Milo". A kitten is stuck on the tallest tower!
- *   back:   hazy skyline (two V-folded layers) · sunset cloud streaks
- *   middle: glass office · brick block · THE TALL TOWER (kitten on top!)
- *   front:  Super-Milo, ready to fly · clouds · birds
- * Pull the red tab: Milo zooms up the tower, scoops the kitten, loops the
- * loop and lands safely. Hearts pop out; the kitten and hearts float away
- * into the sky world behind the book.
+ *   back:   hazy skyline (V-folded) · two sunset streaks
+ *   middle: box-folded buildings in three rows (front wall + side wall + flat
+ *           roof): Sky Cafe, a brick block, THE TALL TOWER (kitten on top!)
+ *   front:  Milo's rooftop (the bakery), Milo standing on it ready to fly
+ * Pull the red tab: Milo crouches and launches, zooms up the tower, scoops the
+ * kitten, loops the loop, turns round and lands back on his rooftop. Hearts pop
+ * out; the kitten and hearts float away into the sky world behind the book.
  */
 
 /* ------------------------------------------------------ the layout -- */
 
-const TOWER_AT: [number, number] = [0.82, -0.42]
+const TOWER_AT: [number, number] = [1.08, -0.46]
 const TOWER_SIZE: [number, number] = [TOWER.w / 1000, TOWER.h / 1000]
 const KITTEN_SIZE: [number, number] = [(KITTEN.w / 1000) * 0.92, (KITTEN.h / 1000) * 0.92]
 
+/** Milo's rooftop: a low corner shop in front. `at` = middle of its front wall. */
+const SHOP_AT: [number, number] = [0.5, 0.78]
+const SHOP_SIZE: [number, number] = [1.1, 0.44]
+const SHOP_K = SHOP_SIZE[0] / 900
+const ROOF_Y = (360 - 30) * SHOP_K // height of the flat roof
+const ROOF_D = 0.5 // how deep the roof is (z)
+const ROOF_Z = SHOP_AT[1] - ROOF_D / 2 // middle of the roof
+
 const HERO_SCALE = 1.2
-const START = new THREE.Vector3(0.3, 0.3, 0.5)
-const GRAB = new THREE.Vector3(0.46, 1.62, -0.3)
-const LAND = new THREE.Vector3(1.1, 0.3, 0.55)
-const SAFE_AT: [number, number] = [1.3, 0.8]
+/** the standing hero's body centre is this far above his feet */
+const BODY_UP = (STAND.h - 50 - 270) * STAND_K
+const STAND_X = 0.2
+const START = new THREE.Vector3(STAND_X, ROOF_Y + BODY_UP, ROOF_Z)
+const GRAB = new THREE.Vector3(0.74, 1.62, -0.2)
+const LAND = START.clone()
+const SAFE_AT: [number, number] = [0.86, ROOF_Z]
 const HEARTS: { dx: number; dz: number; y: number; to: [number, number, number]; s: number }[] = [
   { dx: -0.18, dz: 0.02, y: 0.34, to: [-2.6, 1.7, -5], s: 0.15 },
   { dx: -0.08, dz: -0.04, y: 0.5, to: [-1.0, 2.1, -6], s: 0.2 },
@@ -48,7 +61,7 @@ const HEARTS: { dx: number; dz: number; y: number; to: [number, number, number];
   { dx: 0.1, dz: -0.04, y: 0.54, to: [2.8, 2.2, -7], s: 0.2 },
   { dx: 0.18, dz: 0.02, y: 0.36, to: [4.0, 1.6, -5], s: 0.15 },
 ]
-const KITTEN_WORLD: [number, number, number] = [3.1, 0.55, -4.2]
+const KITTEN_WORLD: [number, number, number] = [3.6, 0.55, -4.2]
 
 /* ----------------------------------------------- spread behaviour -- */
 
@@ -56,16 +69,19 @@ type Phase = 'idle' | 'run' | 'done'
 /** Live state of this spread (reset when you turn the page away). */
 const fl = {
   phase: 'idle' as Phase,
-  x: START.x, y: START.y, z: START.z, rot: 0.1,
+  x: START.x, y: START.y, z: START.z, rot: 0,
+  face: 1, // 1: flying right, -1: flying back left
+  stand: 1, // the standing hero on the roof (0 while he is flying)
+  air: 0, // the flying hero
+  zoom: 0, // the ZOOM! sticker
   speed: 0, // speed lines + sparkle trail
   carry: 0, // the kitten is in Milo's arms
   onTower: 1, // the kitten is up on the tower
   meow: 0, // speech bubble
-  safe: 0, // the rescued kitten on the landing pad
+  safe: 0, // the rescued kitten on the roof
   hearts: 0,
   crouch: 0, // wind-up squash
   pulse: 0, // happy bounce
-  hint: 1, // the "pull me" arrow
   escaped: false,
   nextMeow: 3,
   kRz: 0, // kitten tap wobble
@@ -82,22 +98,22 @@ const ang = (v: THREE.Vector3) => Math.atan2(v.y, Math.max(Math.abs(v.x), 0.02))
 
 const asc = new THREE.CatmullRomCurve3([
   START,
-  new THREE.Vector3(0.38, 0.4, 0.4),
-  new THREE.Vector3(0.36, 0.85, 0.2),
-  new THREE.Vector3(0.42, 1.25, -0.08),
+  new THREE.Vector3(0.3, 0.98, 0.4),
+  new THREE.Vector3(0.45, 1.26, 0.12),
+  new THREE.Vector3(0.62, 1.5, -0.1),
   GRAB,
 ])
 const toLoop = new THREE.CatmullRomCurve3([
   GRAB,
-  new THREE.Vector3(0.68, 1.5, -0.28),
-  new THREE.Vector3(0.84, 1.38, -0.26),
-  new THREE.Vector3(0.98, 1.3, -0.24),
+  new THREE.Vector3(0.98, 1.64, -0.22),
+  new THREE.Vector3(1.2, 1.68, -0.24),
+  new THREE.Vector3(1.36, 1.66, -0.24),
 ])
-const LOOP = { cx: 0.98, cy: 1.5, r: 0.2, drift: 0.14 }
+const LOOP = { cx: 1.36, cy: 1.86, r: 0.2, drift: 0.1 }
 const descend = new THREE.CubicBezierCurve3(
-  new THREE.Vector3(LOOP.cx + LOOP.drift, 1.3, -0.14),
-  new THREE.Vector3(1.46, 1.28, 0.0),
-  new THREE.Vector3(1.5, 0.7, 0.34),
+  new THREE.Vector3(LOOP.cx + LOOP.drift, 1.66, -0.14),
+  new THREE.Vector3(1.78, 1.2, 0.3),
+  new THREE.Vector3(1.1, 1.18, 0.5),
   LAND,
 )
 
@@ -110,8 +126,8 @@ function place(p: THREE.Vector3, rot: number) {
 
 function resetState() {
   Object.assign(fl, {
-    phase: 'idle', x: START.x, y: START.y, z: START.z, rot: 0.1, speed: 0, carry: 0, onTower: 1, meow: 0, safe: 0,
-    hearts: 0, crouch: 0, pulse: 0, hint: 1, escaped: false, nextMeow: 3, kRz: 0,
+    phase: 'idle', x: START.x, y: START.y, z: START.z, rot: 0, face: 1, stand: 1, air: 0, zoom: 0, speed: 0, carry: 0, onTower: 1, meow: 0,
+    safe: 0, hearts: 0, crouch: 0, pulse: 0, escaped: false, nextMeow: 3, kRz: 0,
   })
 }
 
@@ -138,18 +154,23 @@ function runFlight() {
   fl.phase = 'run'
   killAll()
   fl.meow = 0
-  gsap.to(fl, { hint: 0, duration: 0.3 })
   const u = { v: 0 }
   const tl = story()
-  // 1. wind-up: crouch back
-  tl.to(fl, { crouch: 1, rot: -0.4, y: START.y - 0.04, duration: 0.42, ease: 'power2.out' })
+  // 1. wind-up: crouch on the roof
+  tl.to(fl, { crouch: 1, duration: 0.42, ease: 'power2.out' })
+    // 2. up, up and away!
     .add(() => {
       bus.emit('sfx', 'zoom')
       fl.speed = 1
+      place(START, -0.4)
+      fl.face = 1
+      fl.stand = 0
+      fl.air = 1
+      fl.crouch = 0
+      gsap.fromTo(fl, { zoom: 0 }, { zoom: 1, duration: 0.3, ease: 'back.out(2.4)', overwrite: false })
+      gsap.to(fl, { zoom: 0, duration: 0.25, delay: 1.5, overwrite: false })
     })
-    // 2. up, up and away!
     .set(u, { v: 0 })
-    .to(fl, { crouch: 0, duration: 0.2 }, '<')
     .to(u, {
       v: 1,
       duration: 1.9,
@@ -210,34 +231,39 @@ function runFlight() {
         fl.rot -= Math.PI * 2
       },
     })
-    // 6. dive down to the landing pad
+    // 6. turn the paper round and dive back down to the rooftop
     .set(u, { v: 0 })
+    .add(() => bus.emit('sfx', 'whoosh'))
     .to(u, {
       v: 1,
-      duration: 1.6,
+      duration: 2.0,
       ease: 'power2.inOut',
       onUpdate: () => {
         descend.getPoint(u.v, pt)
         descend.getTangent(u.v, tg)
-        const a = Math.max(-1.1, ang(tg))
-        place(pt, lerp(fl.rot * (1 - smooth(0, 0.25, u.v)) + a * smooth(0, 0.25, u.v), 0.05, smooth(0.45, 1, u.v)))
+        const a = Math.max(-0.9, ang(tg))
+        fl.face = 1 - 2 * smooth(0.06, 0.34, u.v)
+        const r0 = fl.rot * (1 - smooth(0, 0.2, u.v)) + a * smooth(0, 0.2, u.v)
+        place(pt, lerp(r0, 0, smooth(0.5, 1, u.v)))
       },
     })
     // 7. landed! safe and sound
     .add(() => {
       fl.speed = 0
+      fl.air = 0
+      fl.face = 1
+      fl.stand = 0.0001
       bus.emit('sfx', 'sparkle')
       bus.emit('milo', 'cheer')
       beat('superhero', 1) // the kitten is rescued: the "what happened" text can be written
     })
-    .to(fl, { carry: 0, safe: 1, duration: 0.45, ease: 'back.out(2.2)' })
+    .to(fl, { stand: 1, carry: 0, safe: 1, duration: 0.45, ease: 'back.out(2.2)' })
     .to(fl, { pulse: 1, duration: 0.2, ease: 'power2.out' }, '<')
     .to(fl, { pulse: 0, duration: 0.6, ease: 'bounce.out' })
     .to(fl, { hearts: 1, duration: 0.9, ease: 'none' }, '-=0.3')
     .add(() => bus.emit('sfx', 'giggle'), '<0.1')
     .add(() => {
       fl.phase = 'done'
-      gsap.to(fl, { hint: 1, duration: 0.5, delay: 4 })
     }, '+=0.6')
     // 8. the hearts and the kitten float off into the sky
     .add(() => {
@@ -261,9 +287,7 @@ function rewind(then: () => void) {
   }
   const tl = story({ onComplete: then })
   tl.to(fl, { hearts: 0, safe: 0, carry: 0, duration: 0.35, delay: 1.2 })
-    .to(fl, { x: START.x, y: START.y + 0.5, z: START.z, rot: 0.1, duration: 0.7, ease: 'power2.inOut' }, '<')
-    .to(fl, { y: START.y, duration: 0.3 })
-    .to(fl, { onTower: 1, duration: 0.45, ease: 'back.out(2)' }, '<')
+    .to(fl, { onTower: 1, duration: 0.45, ease: 'back.out(2)' })
   void tl
 }
 
@@ -306,14 +330,14 @@ function SkyDirector() {
 /* ------------------------------------------------- tiny helpers -- */
 
 /** Scales its children in (a pop) from fl[key]; hidden pieces can't be tapped. */
-function PopIn({ at, k, children }: { at: [number, number]; k: () => number; children: ReactNode }) {
+function PopIn({ at, y = 0, k, children }: { at: [number, number]; y?: number; k: () => number; children: ReactNode }) {
   const g = useRef<THREE.Group>(null!)
   useFrame(() => {
     const e = easeOutBack(clamp01(k()), 1.7)
     g.current.scale.setScalar(Math.max(0.0001, k() <= 0.001 ? 0 : e))
   })
   return (
-    <group ref={g} position={[at[0], 0, at[1]]}>
+    <group ref={g} position={[at[0], y, at[1]]}>
       {children}
     </group>
   )
@@ -352,7 +376,7 @@ function FlightFx() {
   useFrame((_, dt) => {
     const open = anim.raise[index].v > 0.55
     const lift = Math.max(0, fl.y)
-    shMat.opacity = open ? 0.34 / (1 + lift * 2.6) : 0
+    shMat.opacity = open ? (0.34 / (1 + lift * 2.6)) * clamp01(fl.air) : 0
     sh.current.position.set(fl.x, baseY + 0.004, fl.z + 0.02)
     const s = 0.7 / (1 + lift * 0.9)
     sh.current.scale.set(s, s * 0.5, 1)
@@ -360,7 +384,8 @@ function FlightFx() {
     if (fl.speed > 0.5 && acc.current > 0.045) {
       acc.current = 0
       const q = trail[head.current++ % N]
-      q.p.set(fl.x - Math.cos(fl.rot) * 0.3 + (Math.random() - 0.5) * 0.12, fl.y + Math.sin(fl.rot) * -0.3 + (Math.random() - 0.5) * 0.12, fl.z + 0.02)
+      const f = fl.face < 0 ? -1 : 1
+      q.p.set(fl.x - f * Math.cos(fl.rot) * 0.3 + (Math.random() - 0.5) * 0.12, fl.y - f * Math.sin(fl.rot) * 0.3 + (Math.random() - 0.5) * 0.12, fl.z + 0.02)
       q.life = 1
     }
     group.current.children.forEach((m, i) => {
@@ -388,6 +413,46 @@ function FlightFx() {
   )
 }
 
+/* -------------------------------------- box-folded buildings ---- */
+
+/**
+ * A building is one die-cut front wall with a side wall and a flat roof glued
+ * on, so it folds up like a little paper box and has real depth. `x` is the
+ * wall's near edge in the front's own space; `side` -1 = left wall, 1 = right.
+ */
+function SideWall({ art, d, h, x, y = 0, side, delay, px = 768 }: { art: string; d: number; h: number; x: number; y?: number; side: -1 | 1; delay: number; px?: number }) {
+  const { index } = useSpread()
+  return (
+    <Part
+      art={art}
+      size={[d, h]}
+      pivot={[x, y, 0]}
+      offset={[(side * d) / 2, h / 2]}
+      z={0}
+      px={px}
+      animate={(g) => {
+        g.rotation.y = side * (Math.PI / 2) * smooth(0.5, 1, windowed(anim.raise[index].v, delay))
+      }}
+    />
+  )
+}
+function RoofTop({ art, w, d, x = 0, y, delay, px = 512 }: { art: string; w: number; d: number; x?: number; y: number; delay: number; px?: number }) {
+  const { index } = useSpread()
+  return (
+    <Part
+      art={art}
+      size={[w, d]}
+      pivot={[x, y + 0.002, 0]}
+      offset={[0, d / 2]}
+      z={0}
+      px={px}
+      animate={(g) => {
+        g.rotation.x = -(Math.PI / 2) * smooth(0.45, 1, windowed(anim.raise[index].v, delay))
+      }}
+    />
+  )
+}
+
 /* ------------------------------------------------------ the pieces -- */
 
 const hk = (x: number, y: number): [number, number, number] => [(x - HERO.w / 2) * HERO_K, (HERO.h - y) * HERO_K, 0]
@@ -395,22 +460,32 @@ const hk = (x: number, y: number): [number, number, number] => [(x - HERO.w / 2)
 const kittenScared = kitten('scared')
 const kittenHappy = kitten('happy')
 const dusk = [puffyCloud(560, 260, 1, '#ffe2cc', '#ff9fb4'), puffyCloud(520, 240, 2, '#ffd6dc', '#f08fb0')]
-const cloudA = puffyCloud(520, 270, 3)
-const cloudB = puffyCloud(520, 250, 8)
 
-/** Super-Milo, a flying paper figure that follows `fl`. */
+// side walls and roofs of the buildings (colours match their fronts)
+const cafeSide = sideFace({ w: 500, h: 840, body: '#6fb2e4', shade: '#3c6fc4', rim: '#d8f4ff', seed: 21, flip: false, cw: 70, ch: 70, lit: 0.55, darkCol: '#2a3c88', frame: '#2a3c88', band: '#2a3c88', top: '#c9ced6', base: '#26306a' })
+const cafeRoof = roofTopArt({ w: 600, d: 500, base: '#d8dde6', rim: '#c9ced6', kind: 'garden', seed: 3 })
+const brickSide = sideFace({ w: 400, h: 730, body: '#d27064', shade: '#a8453a', rim: '#ffd9c0', seed: 22, cw: 44, ch: 56, lit: 0.5, frame: '#fff0d8', top: '#e07a6a', base: '#8a3f33' })
+const brickRoof = roofTopArt({ w: 520, d: 400, base: '#b8564a', rim: '#8a3f33', kind: 'plain', seed: 4 })
+const towerSideLow = sideFace({ w: 520, h: 1022, body: '#fff0d2', shade: '#d9b98a', rim: '#fff6e0', flip: true, seed: 23, cw: 40, ch: 56, lit: 0.5, frame: '#f6e6c8', band: '#c9524a', top: '#c9524a', base: '#8a6a5a' })
+const towerSideUp = sideFace({ w: 380, h: 452, body: '#fff0d2', shade: '#d9b98a', rim: '#fff6e0', flip: true, seed: 24, cw: 40, ch: 56, lit: 0.55, frame: '#f6e6c8', top: '#c9524a', base: '#c9524a' })
+const towerRoofLow = roofTopArt({ w: 580, d: 520, base: '#e8d3a8', rim: '#c9524a', kind: 'tower', seed: 5 })
+const towerRoofUp = roofTopArt({ w: 332, d: 380, base: '#e8d3a8', rim: '#c9524a', kind: 'plain', seed: 6 })
+const shopRoof = roofTopArt({ w: 886, d: 500, base: '#efd9cc', rim: '#e49a88', kind: 'launch', seed: 7 })
+const shopSide = sideFace({ w: 500, h: 330, body: '#ffd2bc', shade: '#e49a88', rim: '#fff6e0', flip: true, seed: 25, cw: 56, ch: 60, lit: 0.55, frame: '#fff0d8', top: '#c9524a', base: '#8a6a5a' })
+
+/** Super-Milo in flight: a flying paper figure that follows `fl`. */
 function SuperMilo() {
   const wrap = useRef<THREE.Group>(null!)
   const capeA = CAPE_ART
-  useFrame((s) => {
-    const t = s.clock.elapsedTime
+  useFrame(() => {
     const g = wrap.current
-    const idle = fl.phase === 'run' ? 0 : 1
-    const bob = fl.phase === 'run' ? 0 : Math.sin(t * 2.2) * 0.02 + fl.pulse * 0.1
-    g.position.set(fl.x, fl.y + bob, fl.z)
-    g.rotation.z = fl.rot + idle * Math.sin(t * 1.3) * 0.03
-    const q = HERO_SCALE * (1 + fl.pulse * 0.1)
-    g.scale.set(q * (1 - fl.crouch * 0.05), q * (1 + fl.crouch * 0.06), 1)
+    g.visible = fl.air > 0.003
+    g.position.set(fl.x, fl.y, fl.z)
+    const f = fl.face < 0 ? -1 : 1
+    g.rotation.z = (f < 0 ? -fl.rot : fl.rot)
+    const q = HERO_SCALE * (1 + fl.pulse * 0.1) * Math.max(0.0001, fl.air)
+    const fx = Math.sign(fl.face || 1) * Math.max(Math.abs(fl.face), 0.03)
+    g.scale.set(q * fx, q, 1)
   })
   return (
     <group ref={wrap}>
@@ -424,13 +499,6 @@ function SuperMilo() {
         contact={false}
         px={1536}
         tap="none"
-        onTap={() => {
-          if (fl.phase !== 'run') {
-            bus.emit('sfx', 'zoom')
-            bus.emit('milo', 'jump')
-            gsap.fromTo(fl, { pulse: 0 }, { pulse: 1, duration: 0.18, yoyo: true, repeat: 1, ease: 'power2.out' })
-          }
-        }}
       >
         <Part
           art={heroCape}
@@ -466,6 +534,55 @@ function SuperMilo() {
             g.visible = fl.carry > 0.01
             g.scale.setScalar(c)
             g.rotation.z = Math.sin(t * 7) * 0.05
+          }}
+        />
+      </PopCard>
+    </group>
+  )
+}
+
+/** Super-Milo standing on the rooftop, cape blowing, ready to fly. */
+function StandMilo() {
+  const wrap = useRef<THREE.Group>(null!)
+  const W = STAND.w * STAND_K
+  const H = STAND.h * STAND_K
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    const g = wrap.current
+    const k = fl.stand
+    g.visible = k > 0.003
+    const q = Math.max(0.0001, k) * (1 + fl.pulse * 0.1)
+    const breathe = 1 + Math.sin(t * 2) * 0.006
+    g.scale.set(q * (1 + fl.crouch * 0.06), q * (1 - fl.crouch * 0.1) * breathe, 1)
+  })
+  return (
+    <group ref={wrap} position={[STAND_X, ROOF_Y, ROOF_Z]}>
+      <PopCard
+        art={heroStand}
+        size={[W, H]}
+        at={[0, 0]}
+        delay={0.42}
+        hinge="spring"
+        px={1024}
+        tap="none"
+        onTap={() => {
+          if (fl.phase !== 'run') {
+            bus.emit('sfx', 'zoom')
+            bus.emit('milo', 'jump')
+            gsap.fromTo(fl, { pulse: 0 }, { pulse: 1, duration: 0.18, yoyo: true, repeat: 1, ease: 'power2.out' })
+          }
+        }}
+      >
+        <Part
+          art={heroStandCape}
+          size={[W, H]}
+          pivot={[(STAND_NECK.x - STAND.w / 2) * STAND_K, (STAND.h - STAND_NECK.y) * STAND_K, 0]}
+          offset={[(STAND.w / 2 - STAND_NECK.x) * STAND_K, -(STAND.h / 2 - STAND_NECK.y) * STAND_K]}
+          z={-0.012}
+          px={1024}
+          animate={(g, t) => {
+            g.rotation.z = Math.sin(t * 2.4) * 0.035 + Math.sin(t * 7.1) * 0.012 + fl.crouch * 0.12
+            g.scale.set(1 + Math.sin(t * 5.3) * 0.025, 1 + Math.sin(t * 3.7) * 0.02, 1)
           }}
         />
       </PopCard>
@@ -538,32 +655,45 @@ function TowerKitten() {
 }
 
 function HeroPopups() {
+  const CK = 0.74 / 700 // Sky Cafe: metres per art pixel
+  const BK = 0.5 / 560 // the brick block
   return (
     <>
       <SkyDirector />
-      {/* ---- back: sunset streaks, hazy far skyline, dusky near skyline ---- */}
-      <PopCard art={dusk[0]} size={[0.95, 0.44]} at={[-0.95, -1.08]} y={0.7} hinge="spring" delay={0} idle="drift" idleAmp={0.5} tap="jump" contact={false} emissive={0.6} />
-      <PopCard art={dusk[1]} size={[0.7, 0.32]} at={[0.15, -1.08]} y={1.1} hinge="spring" delay={0.02} idle="drift" idleAmp={0.5} idleSpeed={0.8} tap="jump" contact={false} emissive={0.6} />
-      <PopCard art={dusk[0]} size={[0.6, 0.28]} at={[1.35, -1.08]} y={0.5} hinge="spring" delay={0.04} idle="drift" idleAmp={0.5} idleSpeed={0.7} tap="jump" contact={false} emissive={0.6} />
+      {/* ---- back row: hazy skyline and a couple of sunset streaks ---- */}
+      <PopCard art={dusk[0]} size={[0.95, 0.44]} at={[-0.95, -1.08]} y={0.9} hinge="spring" delay={0} idle="drift" idleAmp={0.5} tap="jump" contact={false} emissive={0.6} />
+      <PopCard art={dusk[1]} size={[0.7, 0.32]} at={[1.1, -1.08]} y={1.2} hinge="spring" delay={0.04} idle="drift" idleAmp={0.5} idleSpeed={0.8} tap="jump" contact={false} emissive={0.6} />
       <PopCard art={skylineFar} size={[3.0, 0.9]} at={[0, -1.04]} vfold={0.14} delay={0.02} px={2048} tap="none" />
-      <PopCard art={skylineNear} size={[3.0, 0.8]} at={[0, -0.9]} vfold={0.26} delay={0.06} px={2048} tap="none" />
-      <PopCard art={songBird} size={[0.17, 0.13]} at={[-0.4, -0.7]} y={1.0} hinge="spring" delay={0.5} idle="float" idleAmp={1.4} tap="jump" onTap={() => bus.emit('sfx', 'giggle')} />
-      <PopCard art={songBird} size={[0.12, 0.092]} at={[1.38, -0.5]} y={1.35} hinge="spring" delay={0.52} idle="float" idleAmp={1.2} idleSpeed={1.3} tap="jump" onTap={() => bus.emit('sfx', 'giggle')} />
-      {/* ---- middle: the city + THE TALL TOWER ---- */}
-      <PopCard art={glassOffice} size={[0.7, 1.05]} at={[-1.0, -0.56]} delay={0.1} rotY={0.14} px={1024} tap="wiggle" />
-      <PopCard art={brickBlock} size={[0.56, 0.86]} at={[-0.3, -0.66]} delay={0.14} rotY={-0.1} px={1024} tap="wiggle" />
-      <PopCard art={brickBlock} size={[0.4, 0.62]} at={[1.42, -0.78]} delay={0.16} rotY={-0.22} px={768} tap="wiggle" />
-      <PopCard art={tallTower} size={TOWER_SIZE} at={TOWER_AT} delay={0.2} px={2048} tap="none" rotY={-0.05} hinge="back">
+      <PopCard art={songBird} size={[0.17, 0.13]} at={[-0.2, -0.7]} y={1.25} hinge="spring" delay={0.5} idle="float" idleAmp={1.4} tap="jump" onTap={() => bus.emit('sfx', 'giggle')} />
+      {/* ---- middle rows: box-folded buildings at three depths ---- */}
+      <PopCard art={brickBlock} size={[0.5, 0.77]} at={[-0.1, -0.84]} delay={0.1} rotY={-0.16} px={1024} tap="wiggle">
+        <SideWall art={brickSide} d={0.4} h={730 * BK} x={260 * BK} y={0} side={1} delay={0.1} />
+        <RoofTop art={brickRoof} w={520 * BK} d={0.4} y={730 * BK} delay={0.1} />
+      </PopCard>
+      <PopCard art={glassOffice} size={[0.74, 1.11]} at={[-0.98, -0.5]} delay={0.14} rotY={-0.3} px={1024} tap="wiggle">
+        <SideWall art={cafeSide} d={0.5} h={840 * CK} x={290 * CK} y={10 * CK} side={1} delay={0.14} />
+        <RoofTop art={cafeRoof} w={600 * CK} d={0.5} y={810 * CK} delay={0.14} />
+      </PopCard>
+      <PopCard art={tallTower} size={TOWER_SIZE} at={TOWER_AT} delay={0.2} px={2048} tap="none" rotY={0.28} hinge="back">
+        <SideWall art={towerSideLow} d={0.52} h={1.022} x={-0.29} y={0} side={-1} delay={0.2} />
+        <SideWall art={towerSideUp} d={0.38} h={0.452} x={-0.12} y={1.038} side={-1} delay={0.2} />
+        <RoofTop art={towerRoofLow} w={0.58} d={0.52} y={1.022} delay={0.2} />
+        <RoofTop art={towerRoofUp} w={0.332} d={0.38} x={0.024} y={1.522} delay={0.2} />
         <TowerKitten />
       </PopCard>
-      <PopCard art={sparkle()} size={[0.12, 0.12]} at={[1.18, -0.3]} y={1.9} hinge="spring" delay={0.55} idle="float" emissive={0.8} tap="spin" />
-      <PopCard art={sparkle()} size={[0.08, 0.08]} at={[1.12, -0.3]} y={1.5} hinge="spring" delay={0.58} idle="float" idleSpeed={1.4} emissive={0.8} tap="spin" />
-      {/* ---- front: Super-Milo, clouds, hearts, the rescued kitten ---- */}
-      <PopCard art={cloudA} size={[0.52, 0.27]} at={[-0.12, 0.98]} delay={0.36} emissive={0.5} hinge="spring" idle="bob" tap="jump" />
-      <PopCard art={cloudB} size={[0.42, 0.2]} at={[1.4, 0.98]} delay={0.4} emissive={0.5} hinge="spring" idle="bob" idleSpeed={0.8} tap="jump" />
+      {/* ---- front: Milo's rooftop and the hero ---- */}
+      <PopCard art={launchShop} size={SHOP_SIZE} at={SHOP_AT} delay={0.3} rotY={0.1} px={1024} tap="wiggle">
+        <SideWall art={shopSide} d={ROOF_D} h={330 * SHOP_K} x={-436 * SHOP_K} y={0} side={-1} delay={0.3} />
+        <RoofTop art={shopRoof} w={886 * SHOP_K} d={ROOF_D} y={ROOF_Y} delay={0.3} />
+      </PopCard>
+      <StandMilo />
       <SuperMilo />
       <FlightFx />
-      <PopIn at={SAFE_AT} k={() => fl.safe}>
+      {/* the one sound-word: ZOOM! when Milo takes off */}
+      <PopIn at={[0.06, 0.42]} y={0.7} k={() => fl.zoom}>
+        <PopCard art={zoomBurst} size={[0.5, 0.357]} at={[0, 0]} delay={0.05} hinge="spring" contact={false} tap="none" emissive={0.35} rotY={0.12} />
+      </PopIn>
+      <PopIn at={SAFE_AT} y={ROOF_Y} k={() => fl.safe}>
         <PopCard
           art={kittenHappy}
           size={[0.27, 0.315]}
@@ -573,11 +703,11 @@ function HeroPopups() {
           idle="bob"
           tap="jump"
           onTap={() => bus.emit('sfx', 'giggle')}
-          escape={{ to: KITTEN_WORLD, arc: 1.4, scale: 3.2, duration: 2.4, spin: -0.25, on: 'kitten' }}
+          escape={{ to: KITTEN_WORLD, arc: 1.4, scale: 3.2, duration: 2.4, spin: -0.25, on: 'kitten', upright: true }}
         />
       </PopIn>
       {HEARTS.map((h, i) => (
-        <PopIn key={i} at={[SAFE_AT[0] + h.dx - 0.04, SAFE_AT[1] + h.dz]} k={() => fl.hearts * 1.05 - i * 0.1}>
+        <PopIn key={i} at={[SAFE_AT[0] + h.dx - 0.04, SAFE_AT[1] + h.dz]} y={ROOF_Y} k={() => fl.hearts * 1.05 - i * 0.1}>
           <PopCard
             art={heart(i % 2 ? '#ff5a7a' : '#ff7ab0')}
             size={[h.s * 1.15, h.s * 1.1]}
@@ -589,22 +719,19 @@ function HeroPopups() {
             idleSpeed={1 + i * 0.1}
             emissive={0.6}
             tap="spin"
-            escape={{ to: h.to, arc: 1.2, scale: 2.8, duration: 1.8 + i * 0.15, spin: Math.PI * 1.5, on: 'hearts' }}
+            escape={{ to: h.to, arc: 1.2, scale: 2.8, duration: 1.8 + i * 0.15, spin: Math.PI * 1.5, on: 'hearts', upright: true }}
           />
         </PopIn>
       ))}
-      {/* the "pull me!" arrow, until you've pulled */}
-      <PopIn at={[0.42, 0.8]} k={() => fl.hint}>
-        <PopCard art={arrowHint} size={[0.11, 0.135]} at={[0, 0]} delay={0.6} hinge="spring" idle="bob" idleAmp={2.4} idleSpeed={1.8} tap="none" contact={false} emissive={0.4} />
-      </PopIn>
       <PullTab
         id="fly"
         label="Fly, Milo!"
         sub="pull the tab"
-        at={[0.42, 0.95]}
+        at={[0.5, 1.0]}
         color="#d8261c"
         accent="#a8160f"
         delay={0.55}
+        hint={() => heard('superhero', 'fly') && fl.phase === 'idle'}
         onPull={fly}
       />
     </>

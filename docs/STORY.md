@@ -78,7 +78,7 @@ has finished writing.
 |---|---|---|---|---|---|
 | 0 | `cover` | — | `room` | livingRoom | 0 |
 | 1 | `reading` | Story time | `room` | glowRoom | 1 |
-| 2 | `tools` | Fix-it Milo | `workshop` | workshop | 2 |
+| 2 | `tools` | Fix-it Milo | `workshop` | workshop | 3 |
 | 3 | `digging` | Dig, dig, dig! | `digsite` | digSite | 2 |
 | 4 | `building` | Bridge builder | `bridge` | building | 3 |
 | 5 | `firefighter` | Fire rescue! | `firetown` | fire | 1 |
@@ -99,7 +99,11 @@ has finished writing.
 
 - **Pop-ups:** Milo reading on the sofa with Mom and Dad, a glowing book, 4
   big twinkling stars, and a toy fire truck.
-- **Interaction:** the **"Let them fly" pull tab**. It sends the 4 stars flying
+- **The glow waits for the words:** until the card writes "the book began to
+  *GLOW!*", the book is plain: no burst, no stars, no light, no pull tab. On
+  that word the burst springs up, the book lights, the stars pop out one by one,
+  and then the pull tab appears.
+- **Interaction:** the **"Let them out!" pull tab**. It sends the 4 stars flying
   out into the living room, where they land in front of the sofa in view.
   Beat 1 fires on the pull.
 - **Text:**
@@ -110,29 +114,37 @@ has finished writing.
 ### 2 — Fix-it Milo (`pages/tools.tsx`)
 
 - **Pop-ups:** a workshop pegboard full of tools, sleeping Robo, a battery, a
-  drill, and a cardboard box.
+  drill, a cardboard box, and two loose wheels.
 - **Interactions:**
-  1. **Drag the battery into Robo's chest.** Robo powers up, waves, says "BEEP
-     BOOP", and walks out into the world.
+  1. **Drag the battery into Robo's chest.** It only starts to glow once the
+     card writes "*empty*". Robo powers up, waves, says "BEEP BOOP", and walks
+     out into the world.
   2. **Hold the drill on the box** (the drill only appears once Robo is awake).
-     Wheels go on and the box car zooms off.
+     It drills two holes.
+  3. **Drag the two wheels onto the holes** (either wheel, either hole). The
+     wheels are inert until the holes are drilled and light up on "*wheels!*".
+     Snap, snap, the flag pops up, and the box car zooms off.
 - **Text:**
   > *Whoosh!* Milo landed in his *workshop!* Robo the robot was fast asleep. His battery was *empty*.
   >
   > *(after 1)* *Click!* In went the battery. *Beep boop!* Robo woke up and waved.
   >
-  > *(after 2)* Then Milo drilled wheels on a box. *Vroom!* Off zoomed the box car!
+  > *(after 2)* *Bzzz!* Milo drilled two holes in a box. Now pop on the *wheels!*
+  >
+  > *(after 3)* *Snap, snap!* *Vroom!* Off zoomed the box car!
 
 ### 3 — Dig, dig, dig! (`pages/digging.tsx`, art `art/dig.ts`, `art/digWorld.ts`)
 
 - **Pop-ups:** a "DIG SITE · MILO'S CREW" banner, a yellow excavator with Milo
   in the cab, Robo's blue dump truck, and a dirt pile with a dashed tap-ring
   and a "TAP!" bubble.
-- **Interactions:** **tap the dirt twice.**
+- **Interactions:** **tap the dirt twice.** The dashed ring, the "TAP!" bubble
+  and the glow only appear once the card writes "Tap the *dirt!*".
   1. The arm scoops and dumps into Robo's truck.
   2. The pile is cleared, and a **treasure map** pops up: parchment, an island
-     with a palm tree, a compass, a dotted trail and a red X. The map flies to
-     the upper right of the world, and the truck drives off.
+     with a palm tree, a compass, a dotted trail and a red X. The map twirls
+     out to the upper right of the world and lands standing straight, and the
+     truck drives off.
 - **Text:**
   > Robo zoomed off to the *dig site*, and Milo raced after him! Hop in the big yellow *excavator*. Tap the dirt!
   >
@@ -148,6 +160,9 @@ has finished writing.
 - **Interactions:** **drag the three blocks into their gaps**, in any order.
   - Red goes in the left gap, yellow in the middle and blue on the right.
   - Each gap has a dashed outline and a bouncing arrow in its block's colour.
+    They (and the blocks' glow) only appear once the card writes "Pop the
+    blocks in the *gaps!*".
+  - The blocks start side by side in a row: red, yellow, blue.
   - When all three are in, the bridge is built in the book *and* in the world.
     Confetti flies, the sign changes to "HOORAY", and the truck drives across.
   - The beat count is the number of blocks placed.
@@ -157,8 +172,6 @@ has finished writing.
   > *(after 1)* *Click!* The first block fit.
   >
   > *(after 3)* Two blocks, three blocks... the bridge went *all the way across!*
-- **Open question:** the blocks start stacked, so they all look red. Should
-  they be spread out?
 
 ### 5 — Fire rescue! (`pages/firefighter.tsx`, art `art/fireArt*.ts`, `art/fireWorldArt.ts`)
 
@@ -177,13 +190,15 @@ has finished writing.
 
 ### 6 — Super Milo (`pages/superhero.tsx`, art `art/hero.ts`)
 
-- **Pop-ups:** a city skyline with the Sky Cafe and the Tallest Tower, a kitten
-  stuck on top, a flying Super Milo, "ZOOM!", "WHOOSH" and "UP, UP!" bursts,
-  and target badges.
-- **Interaction:** the **"Fly, Milo!" pull tab**.
-  1. Milo flies up and scoops the kitten off the tower.
+- **Pop-ups:** a calm town square (no printed map or stickers) with
+  box-folded buildings at different depths: the Sky Cafe, a brick block, and
+  the Tallest Tower with the kitten stuck on top. Super Milo stands upright on
+  the roof of a little bakery at the front, cape fluttering.
+- **Interaction:** the **"Fly, Milo!" pull tab** (it lights up on "*fly*!").
+  1. A "ZOOM!" pops up as Milo takes off and scoops the kitten off the tower.
   2. He loops the loop.
-  3. He sets her down on a cloud in the sky world, and hearts float up.
+  3. He lands back on his roof; the kitten and hearts float out to a cloud in
+     the sky world.
 
   Beat 1 fires at the landing. Pulling again replays the flight.
 - **Text:**
@@ -220,14 +235,25 @@ has finished writing.
 
   | Where | What |
   |---|---|
-  | On the sofa | Firefighter Milo and builder Milo |
-  | On the side table | Fix-it Milo |
-  | Overhead | Super Milo flying on a string |
+  | On the sofa | Mom and Dad |
+  | Action figures | Firefighter Milo (shelf), fix-it Milo (side table), builder Milo (floor) |
+  | Overhead | Super Milo toy on a string from a wall hook |
   | On the sofa arm | The kitten |
   | On the floor | Robo, the dump truck, the box car and the excavator |
   | On the wall | The treasure map and the glow-stars |
 
-  Robo, the kitten and the map react when tapped.
+  Robo, the kitten and the map react when tapped. Also:
+  - **The lamp is a light switch.** Tap it: the room goes dusky blue and
+    moonlight shines in through the window onto the floor; the glow-stars
+    shine brighter. Tap again for warm light.
+  - **Mom and Dad sit on the sofa** (they giggle when tapped).
+  - **Four blocks**: tap the tower and they tumble into a row reading
+    **M-I-L-O**; tap again to restack. (Same blocks on the cover and Story
+    time.)
+  - **The costume Milos are action figures** on little display stands
+    (firefighter on the shelf, fix-it on the side table, builder on the floor);
+    Super Milo is a small toy hanging from a wall hook.
+  - **The toy excavator digs** when tapped: reach, scoop, lift, dump.
 - **Interaction:** the **"Read again"** button. The book flips back to the
   cover and every page locks again.
 
