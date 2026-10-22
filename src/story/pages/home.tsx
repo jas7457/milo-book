@@ -22,7 +22,6 @@ import { anim } from '../../state'
 import { bus } from '../../bus'
 import { beat } from '../../progress'
 import { heard } from '../../cue'
-import { useBook } from '../../store'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
 
@@ -194,7 +193,8 @@ function NightFx() {
     const d = night.dark
     veilMat.opacity = d * 0.36 * open
     // the whole scene dims with the room (world, sky, book light) while we're on this page
-    if (useBook.getState().spread === index) anim.lights.dark = d * 0.65
+    // (only while fully open: once the page starts folding away, the turn owns the dimmer)
+    if (anim.raise[index].v > 0.995) anim.lights.dark = d * 0.65
     veil.current.visible = veilMat.opacity > 0.005
     lampLight.current.intensity = open * (1 - d) * (1.5 + Math.sin(s.clock.elapsedTime * 2.1) * 0.08)
     moonLight.current.intensity = open * d * 1.7
