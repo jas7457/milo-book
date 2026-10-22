@@ -124,8 +124,9 @@ export function HintHand({
       }
       onMove?.(st.k, st.press)
     } else if (st.phase === 'abort') {
-      mat.opacity = Math.max(0, mat.opacity - dt * 5)
-      st.k = Math.max(0, st.k - dt * 2.2)
+      // get out of the way fast: the piece snaps home so it can be grabbed
+      mat.opacity = Math.max(0, mat.opacity - dt * 8)
+      st.k = Math.max(0, st.k - dt * 7)
       st.press = 0
       onMove?.(st.k, 0)
       if (st.k <= 0 && mat.opacity <= 0) {

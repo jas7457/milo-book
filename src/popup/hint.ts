@@ -9,10 +9,23 @@
 let lastInput = performance.now()
 if (typeof window !== 'undefined') {
   window.addEventListener('pointerdown', () => (lastInput = performance.now()), true)
+  // moving the mouse counts too (a real move, not a stray event): reaching for
+  // a piece stops its show-me demo at once
+  let lx = 0
+  let ly = 0
+  window.addEventListener(
+    'pointermove',
+    (e) => {
+      if (Math.abs(e.clientX - lx) + Math.abs(e.clientY - ly) > 3) lastInput = performance.now()
+      lx = e.clientX
+      ly = e.clientY
+    },
+    true,
+  )
   window.addEventListener('keydown', () => (lastInput = performance.now()), true)
 }
 
-/** performance.now() of the last touch / click / key */
+/** performance.now() of the last touch / click / key / mouse move */
 export const lastInputAt = () => lastInput
 /** seconds since the last touch */
 export const idleSecs = () => (performance.now() - lastInput) / 1000

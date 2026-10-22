@@ -4,6 +4,10 @@ import * as THREE from 'three'
 import { anim } from '../state'
 import { spreads } from '../story/spreads'
 
+const MOON = '#9fb4ff'
+const MOON_GROUND = '#2c3358'
+const MOON_FOG = '#2a2f55'
+
 const NOISE = /* glsl */ `
   float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
   float vnoise(vec2 p){
@@ -179,11 +183,14 @@ export function Environment() {
     fog.color.copy(ca.set(a.skyBottom).lerp(cb.set(b.skyBottom), k))
     fog.near = a.fogNear + (b.fogNear - a.fogNear) * k
     fog.far = a.fogFar + (b.fogFar - a.fogFar) * k
-    sun.current.color.copy(ca.set(a.sun).lerp(cb.set(b.sun), k))
-    sun.current.intensity = a.sunIntensity + (b.sunIntensity - a.sunIntensity) * k
-    hemi.current.color.copy(ca.set(a.hemiSky).lerp(cb.set(b.hemiSky), k))
-    hemi.current.groundColor.copy(ca.set(a.hemiGround).lerp(cb.set(b.hemiGround), k))
-    hemi.current.intensity = a.hemiIntensity + (b.hemiIntensity - a.hemiIntensity) * k
+    // the room-lights dimmer: lights out turns warm light into dim, cool moonlight
+    const d = anim.lights.dark
+    fog.color.lerp(cb.set(MOON_FOG), d * 0.8)
+    sun.current.color.copy(ca.set(a.sun).lerp(cb.set(b.sun), k)).lerp(cb.set(MOON), d)
+    sun.current.intensity = (a.sunIntensity + (b.sunIntensity - a.sunIntensity) * k) * (1 - 0.72 * d)
+    hemi.current.color.copy(ca.set(a.hemiSky).lerp(cb.set(b.hemiSky), k)).lerp(cb.set(MOON), d * 0.85)
+    hemi.current.groundColor.copy(ca.set(a.hemiGround).lerp(cb.set(b.hemiGround), k)).lerp(cb.set(MOON_GROUND), d * 0.85)
+    hemi.current.intensity = (a.hemiIntensity + (b.hemiIntensity - a.hemiIntensity) * k) * (1 - 0.5 * d)
   })
 
   return (

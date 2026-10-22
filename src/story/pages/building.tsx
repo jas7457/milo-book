@@ -11,6 +11,7 @@ import { anim } from '../../state'
 import { clamp01 } from '../../anim/ease'
 import { bus } from '../../bus'
 import { beat } from '../../progress'
+import { heard } from '../../cue'
 import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
@@ -223,6 +224,9 @@ const SEG_ART = [0, 1, 2].map(segmentArt)
 const SEG_SIZE: [number, number] = [(SEG.w / 1000) * BS, (SEG.h / 1000) * BS]
 const SEG_Y = ((FRAME.h - 630) / 1000) * BS // centre of a block, above the frame's base
 
+/** the story asks for the blocks ("Pop the blocks in the gaps!"): only then do the gaps and blocks light up */
+const asked = () => heard('building', 'gaps')
+
 /** the two banks + the empty slots + the blocks as they arrive */
 function BridgeFrame() {
   return (
@@ -238,8 +242,14 @@ function BridgeFrame() {
               z={0.01}
               emissive={0.35}
               animate={(g, t) => {
-                g.visible = bridge.slots[k] < 0
-                g.scale.setScalar(1 + Math.sin(t * 4 + k * 1.3) * 0.04)
+                // the coloured ghost + arrow pop in once the story asks, one after another
+                const u = g.userData as { s?: number; at?: number }
+                if (!asked()) u.at = undefined
+                else u.at ??= t
+                const want = bridge.slots[k] < 0 && u.at !== undefined && t - u.at > k * 0.18 ? 1 : 0
+                u.s = (u.s ?? 0) + (want - (u.s ?? 0)) * 0.18
+                g.visible = u.s > 0.01
+                g.scale.setScalar(Math.max(0.001, u.s) * (1 + Math.sin(t * 4 + k * 1.3) * 0.04))
                 g.position.y = SEG_Y + Math.sin(t * 3 + k * 1.3) * 0.012
               }}
             />
@@ -323,7 +333,7 @@ function Truck() {
         idleSpeed={1.6}
         tap="none"
         onTap={() => bus.emit('sfx', 'beep')}
-        escape={{ to: [2.7, 1.0, -6.0], arc: 1.2, scale: 2.6, duration: 2.6, spin: -0.12, on: 'truckgo' }}
+        escape={{ to: [2.7, 1.0, -6.0], arc: 1.2, scale: 2.6, duration: 2.6, spin: -0.12, on: 'truckgo', upright: true }}
       >
         {TRUCK_WHEELS.map(([x, y], i) => {
           const [px, py] = TP(x, y)
@@ -454,6 +464,7 @@ function Blocks() {
           target={{ at: slotAt(v), r: 0.15, y: DECK + 0.02 }}
           consume
           color={VARIANTS[v].light}
+          hint={asked}
           onDone={() => place(v)}
         />
       ))}

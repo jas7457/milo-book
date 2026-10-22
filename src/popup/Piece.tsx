@@ -27,6 +27,12 @@ export type Escape = {
    * toggles: out into the world, then back into the book.
    */
   on?: string
+  /**
+   * Land standing straight up in the world, facing the camera: the book's tilt
+   * and the `spin` are worked off during the flight (the spin becomes a twirl
+   * on the way that ends square).
+   */
+  upright?: boolean
 }
 
 export type PieceProps = {
@@ -69,8 +75,18 @@ export type PieceProps = {
   vfold?: number
   /** soft contact shadow on the surface under the piece (default: on unless flat) */
   contact?: boolean
+  /**
+   * Keep the piece folded away until this turns true (e.g. a text cue:
+   * `gate={() => heard('reading', 'glow')}`), then it pops up with its hinge.
+   * Folds back down if it turns false again.
+   */
+  gate?: () => boolean
   children?: ReactNode
 }
+
+const Y_AXIS = new THREE.Vector3(0, 1, 0)
+const qUp = new THREE.Quaternion()
+const qParent = new THREE.Quaternion()
 
 /* A soft radial blob, shared by every contact shadow. */
 let blobTex: THREE.CanvasTexture | null = null
@@ -103,9 +119,13 @@ function halfPlane(w: number, h: number, half: 0 | 1) {
 export function Piece(props: PieceProps & { level: () => number }) {
   const {
     art, size, position, rotY = 0, hinge = 'back', lean = 0, idle = 'none', idleAmp = 1, idleSpeed = 1,
-    tap = 'jump', onTap, onGrab, escape, emissive, px = 768, map, shadow = true, flat = false, level, children, vfold,
-    contact = !flat, hint, material,
+    tap = 'jump', onTap, onGrab, escape, emissive, px = 768, map, shadow = true, flat = false, children, vfold,
+    contact = !flat, hint, material, gate,
   } = props
+  // a gate holds the piece folded until it opens; `level` is then owner × gate
+  const gateV = useRef(0)
+  const ownerLevel = props.level
+  const level = useMemo(() => (gate ? () => ownerLevel() * gateV.current : ownerLevel), [gate, ownerLevel])
   const [w, h] = size
   const tex = useSvgTexture(art, px, map)
   const mat = useMemo(() => material ?? paperMaterial(tex, { emissive }), [material, tex, emissive])
@@ -149,6 +169,14 @@ export function Piece(props: PieceProps & { level: () => number }) {
   }, [escape?.on, level])
 
   useFrame((state, dt) => {
+    if (gate) {
+      if (ownerLevel() < 0.002) gateV.current = 0
+      else {
+        const want = gate() ? 1 : 0
+        const step = dt / (want ? 0.7 : 0.45)
+        gateV.current += Math.sign(want - gateV.current) * Math.min(Math.abs(want - gateV.current), step)
+      }
+    }
     const l = level()
     const g = outer.current
     const vis = l > 0.002
@@ -158,6 +186,7 @@ export function Piece(props: PieceProps & { level: () => number }) {
       armed.current = false
       g.position.copy(base)
       g.scale.setScalar(1)
+      g.rotation.set(0, rotY, 0)
       return
     }
     const e = easeOutBack(l, 1.3)
@@ -276,7 +305,16 @@ export function Piece(props: PieceProps & { level: () => number }) {
       g.position.copy(tmp)
       const sc = 1 + ((escape.scale ?? 1) - 1) * s
       g.scale.setScalar(sc)
-      g.rotation.y = rotY + (escape.spin ?? 0) * s
+      if (escape.upright && g.parent) {
+        // twirl on the way, then settle square to the world, facing the camera
+        g.rotation.set(0, rotY + (escape.spin ?? 0) * Math.sin(Math.PI * s), 0)
+        g.getWorldPosition(tmp)
+        const yaw = Math.atan2(state.camera.position.x - tmp.x, state.camera.position.z - tmp.z)
+        qUp.setFromAxisAngle(Y_AXIS, yaw)
+        g.parent.getWorldQuaternion(qParent)
+        qUp.premultiply(qParent.invert())
+        g.quaternion.slerp(qUp, s * s * (3 - 2 * s))
+      } else g.rotation.y = rotY + (escape.spin ?? 0) * s
     }
 
     if (contact) {

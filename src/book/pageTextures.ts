@@ -140,6 +140,8 @@ export type WordBox = {
   kind: -1 | 0 | 1
   /** pause after it: 0 none, 1 comma-ish, 2 sentence end */
   pause: 0 | 1 | 2
+  /** the word itself (normal words only), for text cues */
+  text?: string
 }
 
 /**
@@ -228,7 +230,7 @@ function layoutText(
         if (boxes && full.length)
           boxes.push({
             x0: cx - 2, x1: cx + ww - spaceW() + 2, top: cy - size * 1.0, bottom: cy + size * 0.3,
-            baseline: cy, chars: full.length, para: pi, kind: 1,
+            baseline: cy, chars: full.length, para: pi, kind: 1, text: full,
             pause: /[.!?…]/.test(last) ? 2 : /[,;:]/.test(last) ? 1 : 0,
           })
         cx += ww

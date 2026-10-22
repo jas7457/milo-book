@@ -117,7 +117,13 @@ export function PullTab({
   accent = '#b0412a',
   delay = 0.5,
   onPull,
+  gate,
+  hint,
 }: {
+  /** stay hidden until this turns true (e.g. a text cue), then pop up */
+  gate?: () => boolean
+  /** when to show the glow, the peek and the show-me hand (default: until pulled) */
+  hint?: () => boolean
   id: string
   label: string
   sub?: string
@@ -149,7 +155,13 @@ export function PullTab({
   const tab = useRef<THREE.Group>(null!)
   const st = useMemo(() => ({ off: 0, pulled: false, t0: 0 }), [])
   const drag = useRef<{ x: number; moved: number; id: number } | null>(null)
-  const live = () => windowed(anim.raise[index].v, delay) >= 0.99
+  const gateV = useRef(gate ? 0 : 1)
+  const gateRef = useRef(gate)
+  gateRef.current = gate
+  const hintRef = useRef(hint)
+  hintRef.current = hint
+  const hinting = () => (hintRef.current ? hintRef.current() : true)
+  const live = () => windowed(anim.raise[index].v, delay) >= 0.99 && gateV.current >= 0.99
   const onPullRef = useRef(onPull)
   onPullRef.current = onPull
 
@@ -221,21 +233,30 @@ export function PullTab({
     document.body.style.cursor = 'grabbing'
   }
 
-  useFrame((s) => {
-    const l = windowed(anim.raise[index].v, delay, 0.3)
+  useFrame((s, dt) => {
+    const raised = windowed(anim.raise[index].v, delay, 0.3)
+    const g = gateRef.current
+    if (!g || raised < 0.01) gateV.current = g ? 0 : 1
+    else {
+      const want = g() ? 1 : 0
+      gateV.current += Math.sign(want - gateV.current) * Math.min(Math.abs(want - gateV.current), dt / 0.4)
+    }
+    const gv = gateV.current
+    // popping up from its gate: a little overshoot
+    const l = raised * (g ? gv * gv * (3 - 2 * gv) : 1)
     root.current.visible = l > 0.01
-    root.current.scale.setScalar(0.6 + 0.4 * l)
+    root.current.scale.setScalar((0.6 + 0.4 * l) * (g && gv < 1 ? 1 + Math.sin(gv * Math.PI) * 0.18 : 1))
     mats.label.opacity = mats.tab.opacity = l
     if (l < 0.5) st.pulled = false
     if (drag.current && l < 0.99) release(false)
     // until it has been pulled once, the tab peeks out now and then
     const t = s.clock.elapsedTime
-    const hint = !st.pulled && !drag.current && l >= 1 ? Math.pow(Math.max(0, Math.sin(t * 1.7)), 8) * 0.07 : 0
+    const hint = !st.pulled && !drag.current && l >= 1 && hinting() ? Math.pow(Math.max(0, Math.sin(t * 1.7)), 8) * 0.07 : 0
     tab.current.position.x = rest + st.off + hint
   })
 
   // until it has been pulled: glow, and a show-me hand that pulls it a little
-  const want = () => !st.pulled && !drag.current && live() && root.current?.visible
+  const want = () => !st.pulled && !drag.current && live() && !!root.current?.visible && hinting()
   const demo = (k: number) => {
     if (drag.current || st.pulled || gsap.isTweening(st)) return
     st.off = k * SLIDE * 0.85

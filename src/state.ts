@@ -41,6 +41,12 @@ export const anim = {
    * left stack (0 → 1); slide = the closed book slid right into view (0 → 1).
    */
   back: { v: 0, slide: 0 },
+  /**
+   * Room lights dimmer, 0 = normal … 1 = lights out (moonlit). Environment and
+   * BookLight follow it. Spreads tween it (bedtime, the back-cover lamp); every
+   * page turn brings it back to 0.
+   */
+  lights: { dark: 0 },
   /** Milo's twirl when changing outfit */
   milo: { spin: 0 },
   time: 0,

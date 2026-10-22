@@ -12,6 +12,7 @@ import { anim } from '../../state'
 import { windowed } from '../../anim/ease'
 import { bus } from '../../bus'
 import { beat } from '../../progress'
+import { heard } from '../../cue'
 import { Cutout } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
@@ -348,6 +349,9 @@ function Reveal({ at, children }: { at: [number, number]; children: ReactNode })
   )
 }
 
+/** the story asks for the tap ("Tap the dirt!"): only then do the ring, bubble and glow show */
+const asked = () => heard('digging', 'dirt')
+
 /** A dashed ring standing round the dirt pile (same plane as the pile): "dig here!" */
 function HintRing() {
   const { baseY, index } = useSpread()
@@ -358,7 +362,7 @@ function HintRing() {
   useFrame((s, dt) => {
     const t = s.clock.elapsedTime
     const open = windowed(anim.raise[index].v, 0.5) >= 1
-    const show = open && !dig.busy && dig.scoops < SCOOPS ? 0.8 + Math.sin(t * 4) * 0.2 : 0
+    const show = open && asked() && !dig.busy && dig.scoops < SCOOPS ? 0.8 + Math.sin(t * 4) * 0.2 : 0
     mat.opacity += (show - mat.opacity) * Math.min(1, dt * 8)
     // wrap the pile as it is now: as tall as its highest layer still standing
     let top = 0
@@ -533,7 +537,7 @@ function DirtPile() {
       tap="none"
       contact={false}
       onTap={() => scoop()}
-      hint={() => !dig.busy && dig.scoops < SCOOPS}
+      hint={() => asked() && !dig.busy && dig.scoops < SCOOPS}
     >
       {A.pileLayers.map((l, i) => (
         <Part
@@ -562,7 +566,7 @@ function DirtPile() {
         animate={(g, t) => {
           const u = g.userData as { s?: number }
           const open = windowed(anim.raise[useSpreadIndex.v].v, 0.5) >= 1
-          const want = open && !dig.busy && dig.scoops < SCOOPS ? 1 : 0
+          const want = open && asked() && !dig.busy && dig.scoops < SCOOPS ? 1 : 0
           u.s = (u.s ?? 0) + (want - (u.s ?? 0)) * 0.15
           g.scale.setScalar(Math.max(0.001, u.s * (1 + Math.sin(t * 6) * 0.07)))
           g.position.y = 0.62 + Math.sin(t * 4) * 0.02
@@ -603,7 +607,7 @@ function Truck() {
         dig.honk = 1
         gsap.to(dig, { honk: 0, duration: 0.6 })
       }}
-      escape={{ to: TRUCK_TO, arc: 0.2, scale: 2.1, duration: 2.8, spin: 0.35, on: 'truck' }}
+      escape={{ to: TRUCK_TO, arc: 0.2, scale: 2.1, duration: 2.8, spin: 0.35, on: 'truck', upright: true }}
     >
       {A.TRUCK_WHEELS.map(([x, y], i) => (
         <Part
@@ -694,7 +698,7 @@ function Popups() {
           px={1024}
           contact={false}
           onTap={() => sendMap()}
-          escape={{ to: MAP_TO, arc: 1.2, scale: 2.0, duration: 2.6, spin: 0.5, wait: 0, on: 'map' }}
+          escape={{ to: MAP_TO, arc: 1.2, scale: 2.0, duration: 2.6, spin: Math.PI * 2, wait: 0, on: 'map', upright: true }}
         />
       </Reveal>
       <Bits />

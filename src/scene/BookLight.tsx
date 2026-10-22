@@ -20,7 +20,7 @@ export function BookLight() {
   }, [scene])
   useFrame(() => {
     // fades up as the book opens
-    ref.current.intensity = 0.4 + 0.85 * anim.cam.open
+    ref.current.intensity = (0.4 + 0.85 * anim.cam.open) * (1 - 0.7 * anim.lights.dark)
   })
   return (
     <spotLight

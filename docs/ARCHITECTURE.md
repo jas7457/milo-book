@@ -48,6 +48,7 @@ There are two kinds of state:
 | `cam.open`, `cam.push` | Camera framing: closed vs open book, and a dive-in during turns |
 | `back.v`, `back.slide` | The ending: the back board swings over, then the closed book slides into view |
 | `milo.spin` | Milo's outfit-change twirl |
+| `lights.dark` | Room-lights dimmer, 0 normal … 1 lights out: Environment and BookLight dim and turn moon-blue. Spreads tween it; every page turn returns it to 0 |
 
 Every animated piece derives its look from these numbers each frame. So any
 state can be jumped to directly: `?page=N` just sets the numbers in `main.tsx`.
@@ -154,6 +155,8 @@ the back.
 - A paper **pencil** follows the writing point and plays the `scribble` sound.
 
 **Driving it:**
+- The pencil starts `START_DELAY` 0.25 s after the card itself is up (it is
+  the first piece to rise), about 2 s after the tap, not after the whole turn.
 - `uClock` advances only while the paragraph's beat is done (`stageOf(id) ≥
   after`). It also never runs past the end of the last allowed paragraph.
 - Finished paragraphs are reported with `markWritten(id, n)`.
@@ -177,8 +180,9 @@ the card.
 | `idle` | Idle motion: `bob` / `sway` / `spin` / `float` / `flicker` / `rock` / `drift` |
 | `tap`, `onTap` | Tap reaction: `jump` / `wiggle` / `spin` / `none`; `onTap` is the callback |
 | `vfold` | A V-fold across the gutter: both halves swing forward by the angle, like real paper glued across the spine |
-| `escape` | `{ to, arc, scale, duration, spin, wait, on }` flies the piece out along an arc. With `on`, each bus event of that id toggles out and back |
+| `escape` | `{ to, arc, scale, duration, spin, wait, on, upright }` flies the piece out along an arc. With `on`, each bus event of that id toggles out and back. `upright` works off the book's tilt during the flight, so the piece lands standing straight and facing the camera (the spin becomes a twirl on the way) |
 | `hint` | "Touch me": a pulsing `Glow` around the die-cut shape (renderOrder −1), an occasional wiggle, and a show-me `HintHand` after idling. Pass a function to switch it off when the job is done |
+| `gate` | `() => boolean`: the piece stays folded until it turns true, then pops up with its hinge (e.g. on a text cue) |
 | `contact`, `flat`, `emissive`, `px`, `shadow` | Contact shadow, lay flat, glow, texture size, cast shadow |
 
 ### Wrappers and mechanics
@@ -196,7 +200,8 @@ the card.
     "PULL ›".
   - **Use:** drag it, or just tap it. It emits `bus 'pull' id`, calls
     `onPull`, then springs back.
-  - **Hints:** it has its own glow and show-me hand.
+  - **Hints:** it has its own glow and show-me hand. `hint={() => …}` decides
+    when they show; `gate={() => …}` keeps the whole tab hidden until then.
 - **`DragPiece`:** pick a piece up and drop it on a target, or hold it over the
   target.
   - **Props:** `target {at, r, y}`, `hold` seconds, `consume`, `onDone`,
@@ -207,8 +212,14 @@ the card.
     art.
   - **Flags:** sets `ui.grab`, so a swipe doesn't turn the page, and
     `ui.dragging`, so the camera parallax holds still.
+  - **Gating:** `hint={() => …}` decides when the glow, the target ring and the
+    show-me hand appear (the piece can still be dragged). `disabled={() => …}`
+    means it can't be picked up yet (a tap wiggles it) and shows no highlights.
+  - **Demo:** the show-me hand carries the real piece. Any input stops the
+    demo and the piece snaps home, and its home spot stays grabbable during
+    the demo.
 - **Hints (`hint.ts`):**
-  - Idleness is measured from the last pointer or key input.
+  - Idleness is measured from the last pointer press, mouse move or key.
   - A hand queue makes sure **only one show-me hand plays at a time**, and
     any input cancels it.
   - The hand appears after `HAND_AFTER 4.5` s idle, and waits while the pencil
@@ -220,6 +231,30 @@ Each spread keeps its state (Robo's power, scoop count, placed blocks…) in
 module-level objects. A `Director` component in the spread's file watches
 `anim.raise[index].v`. When the page folds away, it resets those objects and
 kills that spread's GSAP timelines, so nothing fires on the next page.
+
+### Text cues (`src/cue.ts`)
+
+**Rule: every highlight waits until the story asks for it.** Glows, rings,
+"TAP!" bubbles, ghosts, arrows, show-me hands and pull tabs only switch on
+once the card has written the words that ask for them.
+
+- The story card reports every word it finishes: `hearWord(id, word)`, also
+  emitted as bus `'cue'` `{ id, word }`.
+- `heard(spreadId, word)` is true once that word is written on this visit
+  (case-insensitive, punctuation and `*` ignored). The list clears when the
+  card folds away, so cues replay on every visit.
+- Typical use: `hint={() => heard('tools', 'empty')}`,
+  `gate={() => heard('reading', 'glow')}`.
+
+| Spread | Cue word | What waits for it |
+|---|---|---|
+| reading | `glow` / `tab` | burst, stars, book light, then the pull tab / its hint |
+| tools | `empty` / `wheels` | battery highlights / wheel highlights |
+| digging | `dirt` | ring, "TAP!" bubble, pile glow |
+| building | `gaps` | coloured ghosts + arrows, block highlights |
+| firefighter | `hose` | nozzle highlights |
+| superhero | `fly` | pull-tab highlights |
+| home | `out` | pull-tab highlights |
 
 ## 6. Progress and gating (`src/progress.ts`)
 

@@ -62,6 +62,10 @@ function turn(from: number, to: number, done: () => void, setOutfit: (o: Outfit)
 
   bus.emit('turn', { from, to })
 
+  // whatever a page did to the room lights, the next page starts lit
+  gsap.killTweensOf(anim.lights)
+  tl.to(anim.lights, { dark: 0, duration: 0.9, ease: 'sine.inOut' }, 0)
+
   // pop-ups fold down
   tl.to(anim.raise[from], { v: 0, duration: T.popDown, ease: 'power1.in', overwrite: 'auto' }, 0)
 
@@ -113,6 +117,8 @@ function flipBack(from: number, done: () => void, setOutfit: (o: Outfit) => void
   const b = spreads[0]
   const tl = gsap.timeline()
   bus.emit('turn', { from, to: 0 })
+  gsap.killTweensOf(anim.lights)
+  tl.to(anim.lights, { dark: 0, duration: 0.9, ease: 'sine.inOut' }, 0)
   tl.to(anim.raise[from], { v: 0, duration: T.popDown, ease: 'power1.in', overwrite: 'auto' }, 0)
   if (a.world !== b.world) {
     tl.to(anim.presence[a.world], { v: 0, duration: T.worldOut, ease: 'power1.in', overwrite: 'auto' }, 0)

@@ -21,6 +21,8 @@ import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { anim } from '../../state'
 import { bus } from '../../bus'
 import { beat } from '../../progress'
+import { heard } from '../../cue'
+import { useBook } from '../../store'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
 
@@ -190,7 +192,9 @@ function NightFx() {
   useFrame((s) => {
     const open = windowed(anim.raise[index].v, 0.3, 0.3)
     const d = night.dark
-    veilMat.opacity = d * 0.5 * open
+    veilMat.opacity = d * 0.36 * open
+    // the whole scene dims with the room (world, sky, book light) while we're on this page
+    if (useBook.getState().spread === index) anim.lights.dark = d * 0.65
     veil.current.visible = veilMat.opacity > 0.005
     lampLight.current.intensity = open * (1 - d) * (1.5 + Math.sin(s.clock.elapsedTime * 2.1) * 0.08)
     moonLight.current.intensity = open * d * 1.7
@@ -408,6 +412,7 @@ function LightsTab() {
       accent={off ? '#c98a1a' : '#4a4a9a'}
       color={off ? '#e9a23b' : '#6a6ad0'}
       delay={0.5}
+      hint={() => heard('home', 'out')}
     />
   )
 }
@@ -455,7 +460,7 @@ function HomePopups() {
           idleAmp={0.5}
           tap="spin"
           contact={false}
-          escape={{ to: f.to, arc: 0.7, scale: 3.2, duration: 2.2 + i * 0.25, spin: Math.PI * 2, on: 'lights' }}
+          escape={{ to: f.to, arc: 0.7, scale: 3.2, duration: 2.2 + i * 0.25, spin: Math.PI * 2, on: 'lights', upright: true }}
         />
       ))}
       {/* front */}

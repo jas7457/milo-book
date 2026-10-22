@@ -175,6 +175,10 @@ Full detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
   Reset it in the spread's `Director` when `anim.raise[index].v` drops. Keep GSAP
   timelines in a module array and `kill()` them there too, or sounds fire on the
   next page.
+- **Highlights wait for the story** (user rule): glows, rings, bubbles, hint
+  hands and pull tabs switch on only once the card has written the words that
+  ask for them. Use `heard(spreadId, word)` from `src/cue.ts` with the `hint` /
+  `gate` props (see ARCHITECTURE §5 "Text cues").
 - **Gating:** declare `beats: n` and call `beat(id, k)` at the story moment the
   result appears. Split the text into before and after paragraphs
   (`{ after: k, text }`).

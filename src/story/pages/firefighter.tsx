@@ -19,6 +19,7 @@ import { anim } from '../../state'
 import { clamp01, easeOutBack, windowed } from '../../anim/ease'
 import { bus } from '../../bus'
 import { beat } from '../../progress'
+import { heard } from '../../cue'
 import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
@@ -484,7 +485,7 @@ function FireTruck() {
       px={2048}
       tap="wiggle"
       onTap={() => bus.emit('sfx', 'siren')}
-      escape={{ to: [3.4, 0, -4.4], arc: 1.1, scale: 2.7, duration: 3, spin: -0.12, on: 'truck' }}
+      escape={{ to: [3.4, 0, -4.4], arc: 1.1, scale: 2.7, duration: 3, spin: -0.12, on: 'truck', upright: true }}
     >
       {/* the ladder lifts while you spray */}
       <Part
@@ -849,6 +850,7 @@ function FirePopups() {
         holdSfx="whoosh"
         state={hoseState}
         color="#7fd4ff"
+        hint={() => heard('firefighter', 'hose')}
         onDone={putOut}
       >
         <NozzleProbe />

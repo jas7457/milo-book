@@ -64,8 +64,18 @@ export function DragPiece({
   state: ext,
   color = '#ffe27a',
   holdSfx = 'drill',
+  hint: hintProp,
+  disabled,
   ...piece
-}: Omit<PieceProps, 'position'> & {
+}: Omit<PieceProps, 'position' | 'hint'> & {
+  /**
+   * When to show the "touch me" glow, the target ring and the show-me hand
+   * (default: always, until done). E.g. wait for a text cue:
+   * `hint={() => heard('tools', 'empty')}`. The piece can still be dragged.
+   */
+  hint?: () => boolean
+  /** can't be picked up yet (a tap just wiggles it); no glow, ring or hand */
+  disabled?: () => boolean
   at: [number, number]
   delay?: number
   target: { at: [number, number]; r?: number; y?: number }
@@ -107,6 +117,12 @@ export function DragPiece({
   // latest props for the window listeners (registered once)
   const props = useRef({ hold, onDone, consume, target, at })
   props.current = { hold, onDone, consume, target, at }
+  const hintGate = useRef(hintProp)
+  hintGate.current = hintProp
+  const disabledRef = useRef(disabled)
+  disabledRef.current = disabled
+  const isOff = () => !!disabledRef.current?.()
+  const hinting = () => !isOff() && (hintGate.current ? hintGate.current() : true)
 
   /** pointer → point on the page (in the book's local space) */
   const pagePoint = (cx: number, cy: number) => {
@@ -198,8 +214,8 @@ export function DragPiece({
   const down = (e: ThreeEvent<PointerEvent>) => {
     if (level() < 0.99 || grab.current) return
     e.stopPropagation()
-    if (st.done) {
-      // already used: a happy little wiggle
+    if (st.done || isOff()) {
+      // already used / not yet: a happy little wiggle
       gsap.fromTo(pos, { tilt: 0.6 }, { tilt: 0, duration: 0.6, ease: 'elastic.out(1, 0.3)' })
       bus.emit('sfx', 'boing')
       return
@@ -254,7 +270,7 @@ export function DragPiece({
 
     // target ring: a gentle pulse, brighter while you carry the piece
     const t = s.clock.elapsedTime
-    const show = st.done ? 0 : l >= 1 ? (grab.current ? (st.over ? 1 : 0.75) : 0.35 + Math.sin(t * 3) * 0.15) : 0
+    const show = st.done ? 0 : l >= 1 ? (grab.current ? (st.over ? 1 : 0.75) : hinting() ? 0.35 + Math.sin(t * 3) * 0.15 : 0) : 0
     ringMat.opacity += (show - ringMat.opacity) * Math.min(1, dt * 8)
     const k = r * 2.3 * (1 + Math.sin(t * 4) * 0.05 + (st.over ? 0.12 : 0))
     ringM.current.scale.set(k, k, 1)
@@ -263,7 +279,7 @@ export function DragPiece({
   })
 
 
-  const want = () => !st.done && !grab.current && level() >= 0.999 && pos.s === 1
+  const want = () => !st.done && !grab.current && level() >= 0.999 && pos.s === 1 && hinting()
   // the show-me hand carries the real piece to the target and back
   const demo = (k: number, press: number) => {
     if (grab.current || st.done) return
@@ -277,6 +293,14 @@ export function DragPiece({
   }
   const padDown = (e: ThreeEvent<PointerEvent>) => {
     if (!mover.current.visible || !outer.current.parent) return
+    down(e)
+  }
+  /** pressing where the piece lives always picks it up, even mid-demo */
+  const homeDown = (e: ThreeEvent<PointerEvent>) => {
+    if (st.done || grab.current || isOff() || level() < 0.99) return
+    if (Math.hypot(pos.x - at[0], pos.z - at[1]) < 0.02) return // it's here: its own pad handles it
+    gsap.killTweensOf(pos)
+    Object.assign(pos, { x: at[0], z: at[1], lift: 0, tilt: 0 })
     down(e)
   }
 
@@ -301,13 +325,18 @@ export function DragPiece({
       </mesh>
       <group ref={outer} position={[at[0], 0, at[1]]}>
         <group ref={mover}>
-          <Piece {...piece} tap="none" onGrab={down} hint={() => !st.done && !grab.current} position={[0, baseY, 0]} level={level} />
+          <Piece {...piece} tap="none" onGrab={down} hint={() => !st.done && !grab.current && hinting()} position={[0, baseY, 0]} level={level} />
           {/* a generous grab area on the page around the piece, for small fingers */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseY + 0.003, 0.04]} onPointerDown={padDown}>
             <planeGeometry args={[Math.max(pw, 0.3) + 0.24, 0.42]} />
             <meshBasicMaterial visible={false} />
           </mesh>
         </group>
+        {/* the piece's home spot stays grabbable while the show-me hand carries it away */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseY + 0.002, 0.04]} onPointerDown={homeDown}>
+          <planeGeometry args={[Math.max(pw, 0.3) + 0.24, 0.42]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
       </group>
     </>
   )

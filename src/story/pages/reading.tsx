@@ -12,6 +12,7 @@ import { anim } from '../../state'
 import { windowed } from '../../anim/ease'
 import { bus } from '../../bus'
 import { beat } from '../../progress'
+import { heard } from '../../cue'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
 
@@ -424,7 +425,9 @@ function BookGlow() {
   const ref = useRef<THREE.PointLight>(null!)
   useFrame((s) => {
     const l = windowed(anim.raise[index].v, 0.34)
-    ref.current.intensity = l * (1.6 + Math.sin(s.clock.elapsedTime * 2.4) * 0.35)
+    // fades up with the cue
+    const on = Math.min(1, glow.at ? (performance.now() - glow.at) / 900 : 0)
+    ref.current.intensity = l * on * (1.6 + Math.sin(s.clock.elapsedTime * 2.4) * 0.35)
   })
   return <pointLight ref={ref} position={[0, baseY + 0.45, 0.55]} color="#ffd27a" distance={3} decay={1.4} />
 }
@@ -460,6 +463,13 @@ const bigStar = (fill: string, stroke: string) =>
 /** stars are sent into the room once; the tab can be pulled again without taking them back */
 const flight = { out: false }
 
+/**
+ * The magic waits for the story: nothing glows until the card has written
+ * "the book began to *GLOW!*". `glowing(d)` turns true d seconds after that.
+ */
+const glow = { at: 0 }
+const glowing = (d = 0) => glow.at > 0 && performance.now() - glow.at > d * 1000
+
 function ReadingDirector() {
   const { index } = useSpread()
   const live = useRef(true)
@@ -468,7 +478,13 @@ function ReadingDirector() {
     if (away && live.current) {
       live.current = false
       flight.out = false
+      glow.at = 0
     } else if (!away) live.current = true
+    if (!away && !glow.at && heard('reading', 'glow')) {
+      glow.at = performance.now()
+      bus.emit('sfx', 'sparkle')
+      bus.emit('milo', 'point')
+    }
   })
   return null
 }
@@ -488,7 +504,7 @@ function ReadingPopups() {
       <PopCard art={dadSitting()} size={[0.64, 0.99]} at={[0.62, -0.09]} delay={0.24} rotY={-0.12} idle="sway" idleAmp={0.4} tap="wiggle" px={1024} />
       <PopCard art={miloSitting()} size={[0.42, 0.66]} at={[0.02, -0.24]} y={0.1} delay={0.22} idle="bob" tap="jump" px={1024} />
       {/* front */}
-      <PopCard art={burst} size={[0.96, 0.72]} at={[0, 0.25]} delay={0.3} hinge="spring" lean={0.3} emissive={0.32} tap="none" contact={false} />
+      <PopCard art={burst} size={[0.96, 0.72]} at={[0, 0.25]} delay={0.3} hinge="spring" lean={0.3} emissive={0.32} tap="none" contact={false} gate={() => glowing()} />
       <PopCard art={storybook} size={[1.0, 0.66]} at={[0, 0.32]} vfold={0.5} lean={0.16} delay={0.34} emissive={0.18} tap="jump" px={1024} />
       <BookGlow />
       {STAR_FLIGHTS.map((f, i) => (
@@ -499,13 +515,14 @@ function ReadingPopups() {
           at={f.at}
           y={f.y}
           delay={0.42 + i * 0.03}
+          gate={() => glowing(0.35 + i * 0.22)}
           hinge="spring"
           emissive={0.85}
           idle="float"
           idleAmp={1.3}
           tap="spin"
           px={512}
-          escape={{ to: f.to, arc: 1.1, scale: 2.2, duration: 1.7 + i * 0.15, spin: Math.PI * 2 * f.spin, on: 'stars-fly' }}
+          escape={{ to: f.to, arc: 1.1, scale: 2.2, duration: 1.7 + i * 0.15, spin: Math.PI * 2 * f.spin, on: 'stars-fly', upright: true }}
         >
           <Part
             art={sparkle()}
@@ -527,6 +544,8 @@ function ReadingPopups() {
         accent="#7a5cc8"
         color="#8a6cd8"
         delay={0.55}
+        gate={() => glowing(1.4)}
+        hint={() => heard('reading', 'tab')}
         onPull={() => {
           bus.emit('sfx', 'sparkle')
           bus.emit('milo', 'cheer')

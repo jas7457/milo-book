@@ -13,6 +13,8 @@ import { svgDoc } from '../art/texture'
 import { useSvgTexture } from '../art/useSvgTexture'
 import { INK } from '../art/style'
 import { debug } from '../debug'
+import { clearHeard, hearWord } from '../cue'
+import { windowed } from '../anim/ease'
 
 /** Card width on the page (world units); the left page is 1.6 wide. */
 const CARD_W = 1.2
@@ -32,7 +34,9 @@ const PAUSE = [0.07, 0.22, 0.42]
 /** breath between paragraphs */
 const PARA_GAP = 0.4
 /** wait after the card has popped up before the pencil starts */
-const START_DELAY = 0.6
+const START_DELAY = 0.25
+/** the card's place in its spread's pop-up order (first up) */
+const CARD_DELAY = 0.02
 
 type Timed = WordBox & { t0: number; t1: number }
 type Schedule = { words: Timed[]; paraStart: number[]; paraEnd: number[]; end: number }
@@ -257,7 +261,7 @@ function WritingCard({ spread, art }: { spread: SpreadDef; art: StoryCardArt }) 
   const toLocal = (x: number, y: number, z: number, out: THREE.Vector3) =>
     out.set((x / art.w - 0.5) * CARD_W, (1 - y / art.h) * h, z)
 
-  const st = useMemo(() => ({ clock: 0, wait: 0, word: -1, written: 0 }), [])
+  const st = useMemo(() => ({ clock: 0, wait: 0, word: -1, written: 0, heard: 0 }), [])
   const pen = useMemo(() => ({ pos: new THREE.Vector3(), show: 0 }), [])
   const target = useMemo(() => new THREE.Vector3(), [])
   const rest = useMemo(() => new THREE.Vector3(), [])
@@ -269,13 +273,16 @@ function WritingCard({ spread, art }: { spread: SpreadDef; art: StoryCardArt }) 
     const book = useBook.getState()
     if (v < 0.5) {
       // folded away: start over next time
-      st.clock = st.wait = st.written = 0
+      st.clock = st.wait = st.written = st.heard = 0
       st.word = -1
+      clearHeard(id)
       pen.show = 0
       uniforms.uClock.value = 0
       return
     }
-    const here = book.spread === index && !book.busy && v > 0.98
+    // start as soon as the card itself is up (it is the first piece to rise),
+    // not when the whole page turn has finished
+    const here = book.spread === index && windowed(v, CARD_DELAY) > 0.98
     if (here) st.wait += dt
     // how far may the pencil go? up to the first paragraph still waiting for its beat
     const stage = stageOf(id)
@@ -291,6 +298,13 @@ function WritingCard({ spread, art }: { spread: SpreadDef; art: StoryCardArt }) 
 
     if (writing) setWriting(id)
     else if (useProgress.getState().writing === id) setWriting('')
+
+    // text cues: every word the pencil has finished
+    const sw = sched.words
+    while (st.heard < sw.length && st.clock >= sw[st.heard].t1) {
+      const t = sw[st.heard++].text
+      if (t) hearWord(id, t)
+    }
 
     // paragraphs finished
     let n = 0
@@ -330,7 +344,7 @@ function WritingCard({ spread, art }: { spread: SpreadDef; art: StoryCardArt }) 
   })
 
   return (
-    <PopCard art="" map={art.paper} material={mat} size={[CARD_W, h]} at={[cx, 0.98]} lean={LEAN} delay={0.02} tap="none">
+    <PopCard art="" map={art.paper} material={mat} size={[CARD_W, h]} at={[cx, 0.98]} lean={LEAN} delay={CARD_DELAY} tap="none">
       <Pencil api={pen} />
     </PopCard>
   )
