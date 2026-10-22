@@ -148,7 +148,7 @@ the back.
 **How the writing works:**
 - `storyCardTexture` lays out the words and returns their boxes.
 - `schedule()` gives each word a start and end time:
-  - pace `CPS 17` letters/s;
+  - pace `CPS` = 17 × `SPEED` 1.5 ≈ 25 letters/s (`SPEED` scales every pause too);
   - extra pauses `PAUSE [0.07, 0.22, 0.42]` after a word, comma or sentence;
   - `PARA_GAP 0.4` s between paragraphs.
 - A **time-map texture** stores, per texel, the moment its ink appears. The

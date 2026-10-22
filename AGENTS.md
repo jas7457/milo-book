@@ -259,3 +259,4 @@ See the "Backlog" section of [`docs/NOTES.md`](docs/NOTES.md).
 | [`docs/STORY.md`](docs/STORY.md) | The book's content: characters, every spread's interactions, beats, text (verbatim), worlds |
 | [`docs/SPREAD_GUIDE.md`](docs/SPREAD_GUIDE.md) | How to build or change a spread (worker brief + engine cheat sheet) |
 | [`docs/NOTES.md`](docs/NOTES.md) | The user's notes inbox (collect, wait for "go") + backlog |
+| [`HANDOFF.md`](HANDOFF.md) | How the whole book was built, for someone making their own (stack, lighting, pop-ups, assets, phased plan, prompt template) |

@@ -64,3 +64,4 @@ postprocessing, GSAP, zustand, WebAudio, and the Fredoka font.
 - [`docs/STORY.md`](docs/STORY.md): characters, spreads and text
 - [`docs/SPREAD_GUIDE.md`](docs/SPREAD_GUIDE.md): building a spread
 - [`docs/NOTES.md`](docs/NOTES.md): feedback notes and backlog
+- [`HANDOFF.md`](HANDOFF.md): how it was built, for making your own book
