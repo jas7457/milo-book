@@ -18,10 +18,10 @@ import { INK, limb } from './style'
 
 const CUT = 5
 
-type Face = { skin: string; skinSh: string; iris: string; blush: string }
+export type Face = { skin: string; skinSh: string; iris: string; blush: string }
 
 /** Smiling "crinkly" eye: the cheek pushes the lower lid up into a crescent. */
-function happyEye(x: number, y: number, f: Face, lash = false) {
+export function happyEye(x: number, y: number, f: Face, lash = false) {
   return `
     <ellipse cx="${x}" cy="${y}" rx="17" ry="15" fill="#fff"/>
     <circle cx="${x + 1}" cy="${y + 1}" r="11.5" fill="${f.iris}"/>
@@ -35,7 +35,7 @@ function happyEye(x: number, y: number, f: Face, lash = false) {
 }
 
 /** Big open laughing smile with teeth. */
-function grin(f: Face, wide = 1) {
+export function grin(f: Face, wide = 1) {
   const a = 120 - 34 * wide
   const b = 120 + 34 * wide
   return `
@@ -46,7 +46,7 @@ function grin(f: Face, wide = 1) {
 }
 
 /** An adult head in a 240×260 box (face centre ≈ 120,135). */
-function adultHead(
+export function adultHead(
   f: Face,
   o: { hairBack?: string; hairFront: string; hairFill: string; strands?: string; brow: string; beard?: string; lash?: boolean; jaw?: string; turn?: number },
 ) {
@@ -85,9 +85,9 @@ function adultHead(
  * floor. Both are drawn facing right; Dad is mirrored so he faces left.
  */
 
-const MOM: Face = { skin: '#f0c49c', skinSh: '#d99f78', iris: '#3f2616', blush: '#ef8a7a' }
+export const MOM: Face = { skin: '#f0c49c', skinSh: '#d99f78', iris: '#3f2616', blush: '#ef8a7a' }
 
-const momHairGrad = `
+export const momHairGrad = `
   <linearGradient id="momHair" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0" stop-color="#2b1a12"/><stop offset=".5" stop-color="#3a2318"/><stop offset=".85" stop-color="#6e4428"/><stop offset="1" stop-color="#9a6a42"/>
   </linearGradient>
@@ -95,7 +95,7 @@ const momHairGrad = `
     <stop offset="0" stop-color="#2b1a12"/><stop offset=".8" stop-color="#3a2318"/><stop offset="1" stop-color="#55331f"/>
   </linearGradient>`
 
-const momHead = adultHead(MOM, {
+export const momHead = adultHead(MOM, {
   hairFill: 'url(#momHairTop)',
   brow: '#2b1a12',
   lash: true,
@@ -161,9 +161,9 @@ export const momSitting = () =>
     { cut: CUT },
   )
 
-const DAD: Face = { skin: '#f6cfb0', skinSh: '#e2a988', iris: '#5a4a32', blush: '#f08a7e' }
+export const DAD: Face = { skin: '#f6cfb0', skinSh: '#e2a988', iris: '#5a4a32', blush: '#f08a7e' }
 
-const dadHead = adultHead(DAD, {
+export const dadHead = adultHead(DAD, {
   hairFill: '#5a3a24',
   brow: '#4a301e',
   turn: 7,
