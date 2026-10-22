@@ -37,9 +37,11 @@ function Leaf({ i }: { i: number }) {
   const dir = useRef<1 | -1>(1)
   useFrame(() => {
     const p = anim.leaves[i].p
-    if (p === last.current) return
+    if (p === last.current && !(i === LAST && anim.back.v > 0 && anim.back.v < 1)) return
     if (last.current >= 0 && p !== last.current) dir.current = p > last.current ? 1 : -1
-    bendLeaf(geo, p, rightY(i), leftY(i), dir.current)
+    // closing the back of the book: the last leaf travels stiffly with the board
+    const stiff = i === LAST && anim.back.v > 0.001 ? 0 : 1
+    bendLeaf(geo, p, rightY(i), leftY(i), dir.current, stiff)
     last.current = p
   })
   return (
