@@ -1,33 +1,15 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { svgDoc } from '../art/texture'
 import { useSvgTexture } from '../art/useSvgTexture'
-import { INK } from '../art/style'
+import { POINT_H, POINT_W, handPoint } from '../art/hands'
 import { HAND_AFTER, handTurn, idleSecs, lastInputAt, newHintId, wantHand } from './hint'
 import { useProgress } from '../progress'
 
-/* A friendly white cartoon glove, pointing down; the fingertip is the bottom centre. */
-const HAND_W = 220
-const HAND_H = 284
-const handArt = svgDoc(
-  HAND_W,
-  HAND_H,
-  `<g stroke="${INK}" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
-    <rect x="64" y="8" width="108" height="46" rx="16" fill="#ffd34d"/>
-    <path d="M84 20 L84 42 M104 20 L104 42 M124 20 L124 42 M144 20 L144 42" stroke="#e0a92a" stroke-width="5"/>
-    <path d="M58 72 Q56 50 80 50 L158 50 Q184 52 182 78 L180 150 Q178 186 146 188 L92 188 Q60 184 58 150 Z" fill="#fff"/>
-    <ellipse cx="56" cy="130" rx="21" ry="40" transform="rotate(-24 56 130)" fill="#fff"/>
-    <circle cx="176" cy="150" r="17" fill="#fff"/>
-    <circle cx="164" cy="170" r="18" fill="#fff"/>
-    <circle cx="146" cy="182" r="18" fill="#fff"/>
-    <rect x="91" y="104" width="38" height="172" rx="19" fill="#fff"/>
-    <path d="M100 236 Q110 241 120 236" fill="none" stroke="#c9bfb4" stroke-width="5"/>
-    <path d="M100 196 Q110 201 120 196" fill="none" stroke="#c9bfb4" stroke-width="5"/>
-    <path d="M80 70 Q120 64 160 70" fill="none" stroke="#e3ddd6" stroke-width="6"/>
-  </g>`,
-  { cut: 5 },
-)
+/* A friendly pointing hand (drawn in art/hands.ts); the fingertip is the bottom centre. */
+const HAND_W = POINT_W
+const HAND_H = POINT_H
+const handArt = handPoint
 
 type V3 = [number, number, number]
 export type HandMode = 'drag' | 'tap'
