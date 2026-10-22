@@ -94,7 +94,10 @@ All 13 notes were actioned, tested in the browser at 1180×820 and committed.
 - Paper-doll Milo on the left in his everyday outfit (or pyjamas), waving goodbye.
 
 ---
-# Round 2 — collecting, NOT actioned until the user says "go"
+# Round 2 (notes 1–11) — DONE
+
+All built, tested end to end at 1180×820 and deployed. Highlights now wait
+for their cue word in the story text (`src/cue.ts`).
 
 1. **The writing starts too late on a new page.** The card sits blank too long after a turn.
    - Cause: the pencil waits for the whole turn to finish (`busy` false, ~3.2 s after the
@@ -300,17 +303,18 @@ All 13 notes were actioned, tested in the browser at 1180×820 and committed.
 # Backlog (not yet actioned — open items, from the lead's review)
 
 Decisions waiting on the user:
-- Building: the 3 blocks start stacked, so they all look red. Spread them out so a child can tell them apart?
 - Optional answers from Jen: Milo's favourite toy, stuffed animal or pet, and favourite colour.
 
 Consistency / polish:
 - Embed Fredoka in `svgDoc`: SVG text rasterised from data URLs can't see page fonts.
 - Page 5 (fire): the palette has a heavy red cast.
-- Page 7 (home): "Lights out" should also dim the global lights and the BookLight. Also check the star halos and the hug figure.
+- Cover: the squished "to the Rescue!" title (same Fredoka fix as above).
+- Cover: the MILO block tower is cropped at the right edge (`room.tsx`, group at x=3.1).
+- Back cover: the moonbeam is hard-edged (tune `MoonBeam` 0.06/0.95). The toy excavator could use the new `thud` sfx.
 - Page 4 world: clipping.
 - Back cover: tune the camera for the iPad aspect; the sofa is too dark.
 - StoryCard: `textCard.y` is ignored and the card width is fixed (`CARD_W 1.2`). Make `y`/`w` work to free space on the left page.
-- `DragPiece`: add a `disabled`/`locked` prop. Tools currently uses a local `WakeGate` to make the drill wait for Robo.
+- Tools: the drill still uses a local `WakeGate`; it could move to `DragPiece disabled`.
 
 Performance / tech:
 - `Milo.tsx` uses bare `svgTexture`, so its textures are never freed. Switch it to `useSvgTexture`.
