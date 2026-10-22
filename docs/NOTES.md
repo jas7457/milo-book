@@ -319,7 +319,7 @@ Consistency / polish:
 Performance / tech:
 - `Milo.tsx` uses bare `svgTexture`, so its textures are never freed. Switch it to `useSvgTexture`.
 - Do a performance and memory pass on a real iPad.
-- Add a loading screen and particles.
+- ~~Add a loading screen~~ (done: M-I-L-O blocks screen + cover intro). Particles still open.
 - Fix the favicon 404, and the THREE.Clock deprecation warning.
 - Optional: drag to rotate the camera.
 - Ximena once saw the right page's printed art render blank white under heavy machine load. Not reproduced; watch for it.

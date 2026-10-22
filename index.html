@@ -4,9 +4,54 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Milo to the Rescue!</title>
+    <style>
+      /* the loading screen: plain HTML so it shows before any script has loaded.
+         src/intro.ts fades it out once the book is painted and ready (see Prewarm). */
+      html, body { margin: 0; height: 100%; background: #f3dcae; }
+      #loader {
+        position: fixed; inset: 0; z-index: 50;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4vh;
+        background: radial-gradient(ellipse at 50% 45%, #fff3d6 0%, #f3dcae 70%, #e9c98f 100%);
+        transition: opacity 0.6s ease, transform 0.6s ease;
+      }
+      #loader.done { opacity: 0; transform: scale(1.06); pointer-events: none; }
+      #loader .blocks { display: flex; gap: 2.2vh; }
+      #loader .b {
+        width: 13vh; height: 13vh; border-radius: 2vh;
+        border: 0.7vh solid #3b2a20;
+        display: flex; align-items: center; justify-content: center;
+        font: 700 8.5vh/1 'Fredoka', sans-serif; color: #fff;
+        -webkit-text-stroke: 0.45vh #3b2a20; paint-order: stroke fill;
+        box-shadow: inset -1.6vh -1.6vh 0 rgba(0, 0, 0, 0.16), inset 1vh 1vh 0 rgba(255, 255, 255, 0.28), 0 1.4vh 0 rgba(59, 42, 32, 0.25);
+        animation: hop 1.3s cubic-bezier(.3, 0, .3, 1) infinite;
+      }
+      #loader .b:nth-child(1) { background: #e8322b; }
+      #loader .b:nth-child(2) { background: #3a8be0; animation-delay: 0.15s; }
+      #loader .b:nth-child(3) { background: #f4b400; animation-delay: 0.3s; }
+      #loader .b:nth-child(4) { background: #22a84a; animation-delay: 0.45s; }
+      #loader .t { font: 700 7vh/1 'Fredoka', sans-serif; color: #e8572b; -webkit-text-stroke: 0.3vh #3b2a20; paint-order: stroke fill; }
+      /* letters wait for Fredoka (the only font in the book) instead of flashing a fallback */
+      #loader .b span, #loader .t { opacity: 0; transition: opacity 0.4s; }
+      #loader.fonts .b span, #loader.fonts .t { opacity: 1; }
+      @keyframes hop {
+        0%, 55%, 100% { transform: translateY(0) rotate(0deg); }
+        22% { transform: translateY(-4.5vh) rotate(-6deg); }
+        40% { transform: translateY(0) rotate(3deg) scaleY(0.92); }
+      }
+      @media (prefers-reduced-motion: reduce) { #loader .b { animation: none; } }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="loader" aria-label="Loading the book">
+      <div class="blocks">
+        <div class="b"><span>M</span></div>
+        <div class="b"><span>I</span></div>
+        <div class="b"><span>L</span></div>
+        <div class="b"><span>O</span></div>
+      </div>
+      <div class="t">to the Rescue!</div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -126,7 +126,9 @@ export function svgTexture(svg: string, maxPx = 1024): THREE.CanvasTexture {
   tex.anisotropy = maxAniso
   tex.userData.key = key
   texCache.set(key, tex)
-  loadSvgImage(svg).then((img) => {
+  decoding++
+  const decoded = loadSvgImage(svg).finally(() => decoding--)
+  decoded.then((img) => {
     rasterQueue.push({ tex, run: () => {
       const ctx = canvas.getContext('2d')!
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -144,6 +146,10 @@ export function svgTexture(svg: string, maxPx = 1024): THREE.CanvasTexture {
  * frame, uploading each right away so no texture is left to upload mid-animation.
  */
 const rasterQueue: { tex: THREE.CanvasTexture; run: () => void }[] = []
+/** SVG images still decoding (their paint job isn't queued yet) */
+let decoding = 0
+/** Textures not painted yet: still decoding, or decoded and waiting in the queue. */
+export const texturesPending = () => decoding + rasterQueue.length
 /** Paint + upload queued textures, up to about `budgetPx` pixels this frame (always at least one). */
 export function pumpTextures(upload: (t: THREE.Texture) => void, budgetPx = 2_000_000) {
   let px = 0

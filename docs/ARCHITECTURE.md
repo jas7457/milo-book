@@ -369,9 +369,18 @@ On top of that:
   and refs as `<pointLight>` / `<spotLight>`). They borrow one of a fixed set
   (6 point, 2 spot) that never leaves the scene. If you need more, raise
   `POINTS`/`SPOTS` (it warns in the console when it runs out).
-- **Prewarm (`scene/Prewarm.tsx`).** Paints and uploads queued SVG textures,
-  about 2 MP per frame (no limit for the first 4 s). After each settle it
-  uploads every texture in the scene and calls `gl.compileAsync`, so hidden
-  pieces of the next pages are ready before they first show.
+- **Loading screen + intro (`index.html` `#loader`, `src/intro.ts`).** The
+  loading screen is plain HTML/CSS (the bouncing M-I-L-O blocks), so it shows
+  before any script loads; its letters wait for Fredoka. Behind it the scene
+  renders fully raised while Prewarm paints every texture with no limit
+  (`texturesPending()` counts images still decoding plus the paint queue),
+  uploads them, runs `gl.compileAsync`, then waits for 6 smooth frames
+  (cap: 12 s). Then `startIntro` folds the start spread flat, fades the screen,
+  and pops the world and the pop-ups up like the end of a page turn. All the
+  start-up freezes (0.5–0.7 s) happen behind the screen.
+- **Prewarm (`scene/Prewarm.tsx`).** After start-up, paints and uploads queued
+  SVG textures about 2 MP per frame. After each settle it uploads every
+  texture in the scene and calls `gl.compileAsync`, so hidden pieces of the
+  next pages are ready before they first show.
 - Known gaps (see the backlog): Milo's textures, and a performance and memory
   pass on a real iPad.

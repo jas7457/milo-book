@@ -3,6 +3,10 @@ import '@fontsource/fredoka/500.css'
 import '@fontsource/fredoka/600.css'
 import '@fontsource/fredoka/700.css'
 import './index.css'
+// the loading screen's letters show once Fredoka is in (see index.html)
+const showLoaderText = () => document.getElementById('loader')?.classList.add('fonts')
+document.fonts.load("700 40px 'Fredoka'").then(showLoaderText, showLoaderText)
+setTimeout(showLoaderText, 2500)
 import './sfx'
 import { spreads } from './story/spreads'
 import { anim, initAnim } from './state'
