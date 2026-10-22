@@ -131,3 +131,65 @@ any shared-file change you need from the lead, and the exact test steps for your
   page turn. No API change.
 - The machine is heavily loaded with several browsers open. Keep screenshots few and close/blank
   your preview when you're not looking at it.
+
+---
+
+## Update 3 — finish-the-page gating, self-writing text, before/after paragraphs
+
+The next-page arrow is now **locked until the page is finished**: every
+interaction done *and* all of the story text written. Text is written onto the
+card by a pencil at read-aloud pace (~12.5 letters/s, pauses after commas and
+sentences) — it cannot be skipped. Engine: `src/progress.ts`, `src/book/StoryCard.tsx`.
+
+### What a spread must do
+
+1. Declare how many interactions ("beats") it has, in its `SpreadDef`:
+   ```ts
+   beats: 2,
+   ```
+2. Call `beat(id, n)` when the reader completes interaction n (1-based):
+   ```ts
+   import { beat } from '../../progress'
+   beat('tools', 1)   // e.g. when the battery snaps into Robo
+   ```
+   - Call it at the *story moment* the result is shown (usually right as the
+     reward animation starts), not at the end of a 6-second timeline.
+   - Calling it twice / with a lower n is harmless. Beats reset automatically
+     every time the spread is turned to (your Director already resets the
+     pop-up state when the page is turned away — keep it that way).
+   - Beats can be ordered (beat 2 only possible after 1) or not — if the reader
+     can do things in any order, count completions and call `beat(id, count)`.
+3. Split the text into **before** and **after** paragraphs:
+   ```ts
+   text: [
+     'Robo the robot was fast asleep. His *battery* was empty!',     // written as the page opens
+     { after: 1, text: '*Click!* Beep boop — Robo woke up!' },        // waits for beat 1
+     { after: 2, text: 'Bzzzt! Milo drilled the wheels on. *Vroom!*' }, // waits for beat 2
+   ],
+   ```
+   - Before-text = sets the scene and tells the child what to do (gently).
+     After-text = what happened. Every `after: n` must be ≤ `beats`.
+   - Paragraphs are written strictly in order; an `after` paragraph starts once
+     its beat is done *and* everything above it has been written.
+   - The page unlocks when all beats are done and the last paragraph is written.
+4. **Keep it short.** A 5-year-old's picture book: ~35–50 words per spread in
+   total, short sentences, *emphasis* on the fun words. Long text = long wait.
+
+### The card is sized for ALL paragraphs from the start
+
+The card's height now includes the after-paragraphs, so it's taller than
+before. Check that at its final size it doesn't hide anything important on
+your spread (move `textCard`, or move your pop-ups). The card is a pop-up
+standing at the front of the left page, x ≈ −1.6…−0.4 (for `w: 0.8`).
+
+### Hints
+
+The show-me hand waits until the pencil stops writing. Interactions themselves
+are live the whole time (a child may tap before the text is done — that's fine).
+
+### Testing
+
+- `?page=N` → watch: text writes in, arrow stays grey; do the interactions →
+  after-text writes in → arrow pops and glows.
+- Turn away and back: text rewrites from the start, interactions reset, arrow
+  stays unlocked (a finished page stays finished).
