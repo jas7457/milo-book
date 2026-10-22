@@ -319,19 +319,33 @@ On top of that:
 
 - **`texture.ts`:**
   - `svgDoc(w, h, body, { cut, defs, grain, edge })` wraps an SVG body as a
-    die-cut paper piece: grain, a cream cut edge along the `cut` path, and a
-    dark rim.
-  - `svgDoc` output is deterministic (the grain seed is a hash of the art), so
-    art built inside a render hits the texture cache. Never put a counter or
-    `Math.random()` into an SVG string built during render: every re-render
-    would repaint and re-upload it.
+    die-cut paper piece: a cream cut edge along the `cut` path, and a dark rim.
+  - **Paper grain is not in the SVG.** `svgDoc` records `data-grain="g"` on
+    the root; `svgTexture` stores it (and the art's aspect) in
+    `tex.userData`; the material multiplies a shared 256² tiling noise texture
+    in on the GPU (`grainTexture`, `GRAIN_APPLY`: fibres ≈ 900 cells and soft
+    blotches ≈ 12 cells across the piece, same formula the old filter used).
+    `paperMaterial` does this itself; other materials with a paper map use
+    `addGrain(material, map)`; canvas textures use `setGrain(tex, g, w, h)`.
+    As an SVG `feTurbulence` filter the grain cost 100–400 ms per big piece to
+    paint in Safari (the main cause of iPad freezes after page turns).
+  - Never put a counter or `Math.random()` into an SVG string built during
+    render: every re-render would repaint and re-upload it.
   - The cut edge is one `feGaussianBlur` + two alpha thresholds (not
-    `feMorphology`, which cost ~10× more to paint).
+    `feMorphology`, which cost ~10× more to paint). It is now the main
+    painting cost (~5–35 ms per big piece in WebKit).
   - `svgTexture(svg, maxPx)` returns a `CanvasTexture` at once; the painting
-    and GPU upload are queued and done by `pumpTextures` (see §12).
+    and GPU upload are queued and done by `pumpTextures` (see §12). Safari
+    rasterises an SVG at its own `width`/`height` and then scales it, so an SVG
+    declared bigger than the texture is re-declared at the texture size
+    (`sizeSvg`). Safari also rasterises lazily, at upload time, which is why
+    the queue budget is time (6 ms per frame), not pixels.
   - `retainTexture`/`releaseTexture` ref-count textures, and `useSvgTexture`
     is the hook that does this automatically.
-  - `paperMaterial(map)` is the standard paper material.
+  - `paperMaterial(map)` is the standard paper material: a
+    `MeshLambertMaterial` (matte paper looked identical to Standard at
+    roughness 0.92, and costs much less per pixel per light), double-sided
+    with a cream back face, `alphaTest 0.5`, plus the grain.
 - **`style.ts`:** `INK #3b2a20`, `limb`, `rand(seed)`, `woodGrain`.
 - **`kit.ts`:** shared shapes: stars, sparkles, hearts, clouds, hills, trees,
   pines, bushes, puffs.
@@ -360,6 +374,18 @@ On top of that:
 - SVG textures are ref-counted and disposed on unmount (`useSvgTexture`).
 - Big pieces opt into `px={2048}`; most use 1024 or less.
 - `dpr` is clamped to `[1, 2]`, and shadows use PCF.
+- **Adaptive resolution (`scene/AdaptiveResolution.tsx`).** If the median
+  frame of a calm 2 s window (no loading screen, no turn) is slower than 21 ms,
+  the pixel ratio steps down 0.25 (not below 1.25). Never back up (spare
+  capacity can't be measured under 60 Hz vsync, and each change resizes the
+  render targets). Fast devices never step down.
+- The canvas has `antialias: false`: the EffectComposer renders into its own
+  multisampled target, so canvas MSAA was a wasted second resolve.
+- **Measuring Safari on a Mac:** Playwright's WebKit build (`npx playwright`
+  in a scratch folder, `webkit.launch()`) runs the real Safari engine. Turning
+  through the book there and logging `requestAnimationFrame` gaps > 50 ms is
+  the best stand-in for the iPad we have. Chrome on a fast Mac hides Safari's
+  slow SVG filter rasterisation completely.
 
 **Smooth page turns.** A turn must never compile a shader or upload a texture.
 - **Light pool (`scene/lightPool.tsx`).** three.js bakes the number of lights

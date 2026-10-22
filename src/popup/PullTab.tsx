@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
+import { addGrain } from '../art/texture'
 import gsap from 'gsap'
 import { anim, ui } from '../state'
 import { windowed } from '../anim/ease'
@@ -147,7 +148,7 @@ export function PullTab({
 
   const mats = useMemo(() => {
     const m = (map: THREE.Texture) =>
-      new THREE.MeshStandardMaterial({ map, transparent: true, roughness: 0.9, depthWrite: false, alphaTest: 0.02 })
+      addGrain(new THREE.MeshStandardMaterial({ map, transparent: true, roughness: 0.9, depthWrite: false, alphaTest: 0.02 }), map)
     return { label: m(labelTex(label, sub, accent)), tab: m(tabTex(color)) }
   }, [label, sub, accent, color])
 

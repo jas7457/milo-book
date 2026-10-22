@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import gsap from 'gsap'
-import { svgDoc } from '../../art/texture'
+import { svgDoc, addGrain } from '../../art/texture'
 import { useSvgTexture } from '../../art/useSvgTexture'
 import { paperMaterial } from '../../art/texture'
 import { starPath } from '../../art/kit'
@@ -502,7 +502,7 @@ function Block({ ch, st }: { ch: string; st: BlockSt }) {
     const [base, light] = BLOCK_COL[ch]
     const side = new THREE.MeshStandardMaterial({ color: base, roughness: 0.7 })
     const top = new THREE.MeshStandardMaterial({ color: light, roughness: 0.7 })
-    const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 })
+    const face = addGrain(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 }), tex)
     return [side, side, top, side, face, side]
   }, [ch, tex])
   useEffect(() => () => mats.forEach((m) => m.dispose()), [mats])

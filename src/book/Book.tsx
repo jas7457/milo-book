@@ -8,6 +8,7 @@ import { spreads, cover } from '../story/spreads'
 import { bendLeaf, createLeafGeometry } from './leafGeometry'
 import { blankPageTexture, coverTexture, leftPageTexture, rightPageTexture } from './pageTextures'
 import { SpreadProvider } from '../popup/SpreadContext'
+import { addGrain } from '../art/texture'
 import { StoryCard } from './StoryCard'
 
 const N = spreads.length
@@ -22,7 +23,8 @@ const rightY = (i: number) => BOARD_T + (N - i) * LEAF_GAP
 const leftY = (i: number) => BOARD_T + i * LEAF_GAP
 
 function paperMat(map: THREE.Texture, side: THREE.Side) {
-  return new THREE.MeshStandardMaterial({ map, side, roughness: 0.9, metalness: 0 })
+  // matte paper: Lambert looks the same as Standard at roughness 0.9 and costs much less per pixel
+  return addGrain(new THREE.MeshLambertMaterial({ map, side }), map)
 }
 
 /** One paper leaf (front = right page of spread i, back = left page of spread i+1). */
@@ -56,8 +58,10 @@ function Leaf({ i }: { i: number }) {
 function Cover() {
   const ref = useRef<THREE.Group>(null!)
   const { top, inner, edge } = useMemo(() => {
-    const top = new THREE.MeshStandardMaterial({ map: coverTexture(cover.art, cover.title, cover.subtitle), roughness: 0.8 })
-    const inner = new THREE.MeshStandardMaterial({ map: leftPageTexture(spreads[1], 1, false), roughness: 0.9 })
+    const topMap = coverTexture(cover.art, cover.title, cover.subtitle)
+    const top = addGrain(new THREE.MeshStandardMaterial({ map: topMap, roughness: 0.8 }), topMap)
+    const innerMap = leftPageTexture(spreads[1], 1, false)
+    const inner = addGrain(new THREE.MeshStandardMaterial({ map: innerMap, roughness: 0.9 }), innerMap)
     const edge = new THREE.MeshStandardMaterial({ color: CLOTH, roughness: 0.85 })
     return { top, inner, edge }
   }, [])
@@ -96,11 +100,8 @@ function BackBoard() {
   const ref = useRef<THREE.Group>(null!)
   const { edge, outside } = useMemo(() => {
     const edge = new THREE.MeshStandardMaterial({ color: CLOTH, roughness: 0.85 })
-    const outside = new THREE.MeshStandardMaterial({
-      map: BACK?.cover ? coverTexture(BACK.cover.art, BACK.cover.title, BACK.cover.subtitle) : null,
-      color: BACK?.cover ? '#ffffff' : CLOTH,
-      roughness: 0.8,
-    })
+    const outMap = BACK?.cover ? coverTexture(BACK.cover.art, BACK.cover.title, BACK.cover.subtitle) : null
+    const outside = addGrain(new THREE.MeshStandardMaterial({ map: outMap, color: BACK?.cover ? '#ffffff' : CLOTH, roughness: 0.8 }), outMap)
     return { edge, outside }
   }, [])
   useFrame(() => {

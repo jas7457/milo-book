@@ -19,21 +19,17 @@ function phi(x: number) {
   return 0.5 * (1 + (x < 0 ? -erf : erf))
 }
 
-/** FNV-1a over a string (sampled for very long ones), for stable per-piece seeds */
-function hash(str: string, h = 0) {
-  h = (h ^ 0x811c9dc5) >>> 0
-  const step = Math.max(1, Math.floor(str.length / 4000))
-  for (let i = 0; i < str.length; i += step) h = Math.imul(h ^ str.charCodeAt(i), 0x01000193) >>> 0
-  return (h ^ str.length) >>> 0
-}
-// paper density = 1 − 0.2g + 0.3g·noise  (noise ≈ 0.25…0.75 → ~0.88…1.0)
-const grainRow = (g: number) => `${(0.3 * g).toFixed(3)} 0 0 0 ${(1 - 0.2 * g).toFixed(3)}`
 
 /**
  * Wrap an SVG body in a document.
  *  - `cut`   adds a thin cream die-cut paper edge around the shapes
- *  - `grain` (default on) prints the art onto paper: fine fibres plus soft
+ *  - `grain` (default 1) prints the art onto paper: fine fibres plus soft
  *            blotchy ink density, so flat fills look like a printed page.
+ *            The grain is NOT in the SVG: it's recorded as `data-grain` and
+ *            the paper material multiplies a tiling noise texture in on the
+ *            GPU (see `grainTexture`). As an SVG filter (feTurbulence) it cost
+ *            100–400 ms per big piece to paint in Safari, which froze the iPad
+ *            whenever a new page's art was painted.
  */
 export function svgDoc(
   w: number,
@@ -43,19 +39,9 @@ export function svgDoc(
 ) {
   const cut = opts.cut ?? 0
   const grain = opts.grain ?? 1
-  // the grain's seed comes from the art itself: the same piece always makes the
-  // same SVG string, so it hits the texture cache even when it's rebuilt in a render
-  const seed = hash(body, w * 31 + h) % 97
-  // the noise is sized relative to the art so it looks the same at any scale
+  // edge widths are sized relative to the art so they look the same at any scale
   const s = Math.max(w, h) / 1000
-  const grainFx = grain
-    ? `<feTurbulence type="fractalNoise" baseFrequency="${(0.9 / s).toFixed(3)}" numOctaves="2" seed="${seed}" result="fib"/>
-       <feTurbulence type="fractalNoise" baseFrequency="${(0.012 / s).toFixed(4)}" numOctaves="3" seed="${seed + 7}" result="blot"/>
-       <feComposite in="fib" in2="blot" operator="arithmetic" k1="0" k2="0.45" k3="0.55" k4="0" result="mix"/>
-       <feColorMatrix in="mix" type="matrix" values="${grainRow(grain)} ${grainRow(grain)} ${grainRow(grain)} 0 0 0 0 1" result="paper"/>
-       <feBlend in="SourceGraphic" in2="paper" mode="multiply" result="inked"/>
-       <feComposite in="inked" in2="SourceAlpha" operator="in" result="art"/>`
-    : `<feOffset in="SourceGraphic" result="art"/>`
+  const grainFx = `<feOffset in="SourceGraphic" result="art"/>`
   // The die-cut edge: the shape's alpha grown outwards twice (cream border, then a thin
   // brown rim). One blur + two thresholds does both. (feMorphology "dilate" looked the
   // same but cost ~10× more to paint, which stalled page turns, worst on iPad.)
@@ -76,13 +62,18 @@ export function svgDoc(
        <feMerge><feMergeNode in="rim"/><feMergeNode in="border"/><feMergeNode in="art"/></feMerge>`
     : ''
   const filter =
-    cut || grain
+    cut
       ? `<filter id="cut" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">${grainFx}${edgeFx}</filter>`
       : ''
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" data-grain="${grain}">
     <defs>${filter}${opts.defs ?? ''}</defs>
     <g ${filter ? 'filter="url(#cut)"' : ''}>${body}</g>
   </svg>`
+}
+
+/** The same drawing, declared at another pixel size (the viewBox keeps the art identical). */
+function sizeSvg(svg: string, w: number, h: number) {
+  return svg.replace(/width="([\d.]+)" height="([\d.]+)"/, `width="${w}" height="${h}"`)
 }
 
 export function svgUrl(svg: string) {
@@ -125,9 +116,13 @@ export function svgTexture(svg: string, maxPx = 1024): THREE.CanvasTexture {
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = maxAniso
   tex.userData.key = key
+  setGrain(tex, parseFloat(svg.match(/data-grain="([\d.]+)"/)?.[1] ?? '0'), w, h)
   texCache.set(key, tex)
   decoding++
-  const decoded = loadSvgImage(svg).finally(() => decoding--)
+  // Safari rasterises an SVG image at its own width/height and then scales it, so a
+  // drawing declared bigger than its texture would be painted (filters and all) at
+  // the bigger size for nothing. Declare the texture's size instead.
+  const decoded = loadSvgImage(Math.max(w, h) > maxPx ? sizeSvg(svg, canvas.width, canvas.height) : svg).finally(() => decoding--)
   decoded.then((img) => {
     rasterQueue.push({ tex, run: () => {
       const ctx = canvas.getContext('2d')!
@@ -150,16 +145,18 @@ const rasterQueue: { tex: THREE.CanvasTexture; run: () => void }[] = []
 let decoding = 0
 /** Textures not painted yet: still decoding, or decoded and waiting in the queue. */
 export const texturesPending = () => decoding + rasterQueue.length
-/** Paint + upload queued textures, up to about `budgetPx` pixels this frame (always at least one). */
-export function pumpTextures(upload: (t: THREE.Texture) => void, budgetPx = 2_000_000) {
-  let px = 0
-  while (rasterQueue.length && px < budgetPx) {
+/**
+ * Paint + upload queued textures until `budgetMs` has been spent this frame
+ * (always at least one). Time, not pixels: Safari only really rasterises the
+ * SVG when the canvas is uploaded, and the cost depends on the art, not its size.
+ */
+export function pumpTextures(upload: (t: THREE.Texture) => void, budgetMs = 6) {
+  const start = performance.now()
+  while (rasterQueue.length && performance.now() - start < budgetMs) {
     const job = rasterQueue.shift()!
     if (texCache.get(job.tex.userData.key) !== job.tex) continue // freed before it was painted
     job.run()
     upload(job.tex)
-    const c = job.tex.image as HTMLCanvasElement
-    px += c.width * c.height
   }
   return rasterQueue.length
 }
@@ -196,17 +193,123 @@ export function releaseTexture(tex: THREE.Texture) {
  * Paper material: lit, alpha-tested cut-out with a plain paper-coloured back
  * face (like a real die-cut pop-up piece).
  */
-const matCache = new Map<string, THREE.MeshStandardMaterial>()
+const matCache = new Map<string, THREE.MeshLambertMaterial>()
+/* ---------------------------------------------------------------- grain -- */
+
+/** Store a texture's paper-grain amount and the art's aspect (for `paperMaterial` / `addGrain`). */
+export function setGrain(tex: THREE.Texture, grain: number, w: number, h: number) {
+  const L = Math.max(w, h)
+  tex.userData.grain = grain
+  tex.userData.grainAsp = [w / L, h / L]
+}
+
+/** Periodic value noise on a size×size grid with `cells` lattice cells per side. */
+function periodicNoise(size: number, cells: number, rnd: () => number) {
+  const lat = Array.from({ length: cells * cells }, rnd)
+  const out = new Float32Array(size * size)
+  const sm = (t: number) => t * t * (3 - 2 * t)
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const fx = (x / size) * cells, fy = (y / size) * cells
+      const x0 = Math.floor(fx), y0 = Math.floor(fy)
+      const tx = sm(fx - x0), ty = sm(fy - y0)
+      const at = (i: number, j: number) => lat[((j % cells) * cells + (i % cells))]
+      const a = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * tx
+      const b = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * tx
+      out[y * size + x] = a + (b - a) * ty
+    }
+  return out
+}
+
+let grainTex: THREE.DataTexture | null = null
+/**
+ * The paper grain, one small tiling texture shared by every piece:
+ *  R = fine fibres (≈ 900 noise cells across a piece's long side, like the old
+ *      feTurbulence baseFrequency 0.9 per 1000 px),
+ *  G = soft blotchy ink density (≈ 12 cells across, 3 octaves).
+ * Made once in JS (a few ms); mipmapped, so distant pieces average out smoothly.
+ */
+export function grainTexture() {
+  if (grainTex) return grainTex
+  const N = 256
+  let seed = 7
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  const f1 = periodicNoise(N, 128, rnd), f2 = periodicNoise(N, 256, rnd)
+  const b1 = periodicNoise(N, 4, rnd), b2 = periodicNoise(N, 8, rnd), b3 = periodicNoise(N, 16, rnd)
+  const data = new Uint8Array(N * N * 4)
+  for (let i = 0; i < N * N; i++) {
+    // centred on 0.5 with about the spread of SVG fractalNoise
+    const fib = 0.5 + ((f1[i] * 0.67 + f2[i] * 0.33) - 0.5) * 0.9
+    const blot = 0.5 + ((b1[i] * 0.57 + b2[i] * 0.29 + b3[i] * 0.14) - 0.5) * 1.4
+    data[i * 4] = Math.round(fib * 255)
+    data[i * 4 + 1] = Math.round(blot * 255)
+    data[i * 4 + 2] = 128
+    data[i * 4 + 3] = 255
+  }
+  grainTex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat)
+  grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping
+  grainTex.magFilter = THREE.LinearFilter
+  grainTex.minFilter = THREE.LinearMipmapLinearFilter
+  grainTex.generateMipmaps = true
+  grainTex.needsUpdate = true
+  return grainTex
+}
+
+/** Uniforms for the grain of one texture (amount 0 = off). */
+export function grainUniforms(map: THREE.Texture | null, amount?: number, asp?: [number, number]) {
+  const a = (asp ?? map?.userData.grainAsp ?? [1, 1]) as [number, number]
+  const id = map?.id ?? 0
+  return {
+    uGrain: { value: grainTexture() },
+    uGrainAmt: { value: amount ?? map?.userData.grain ?? 0 },
+    uGrainAsp: { value: new THREE.Vector2(a[0], a[1]) },
+    // each piece gets its own patch of blotches
+    uGrainOff: { value: new THREE.Vector2(((id * 0.6180339) % 1), ((id * 0.7548776) % 1)) },
+  }
+}
+export const GRAIN_DECL = 'uniform sampler2D uGrain; uniform float uGrainAmt; uniform vec2 uGrainAsp; uniform vec2 uGrainOff;'
+/** paper density = 1 − 0.2g + 0.3g·(0.45·fibres + 0.55·blotches), the same formula the SVG filter used */
+export const GRAIN_APPLY = `#ifdef USE_MAP
+  if (uGrainAmt > 0.0) {
+    vec2 guv = vMapUv * uGrainAsp;
+    float gFib = texture2D(uGrain, guv * 7.0).r;
+    float gBlot = texture2D(uGrain, guv * 3.0 + uGrainOff).g;
+    diffuseColor.rgb *= 1.0 - 0.2 * uGrainAmt + 0.3 * uGrainAmt * (0.45 * gFib + 0.55 * gBlot);
+  }
+  #endif`
+
+/**
+ * Give any MeshStandard/Lambert material with a `map` the same paper grain
+ * (for materials not made by `paperMaterial`). `amount` defaults to the map's
+ * own `data-grain`.
+ */
+export function addGrain<M extends THREE.Material>(m: M, map: THREE.Texture | null, amount?: number, asp?: [number, number]): M {
+  const prev = m.onBeforeCompile.bind(m)
+  const prevKey = m.customProgramCacheKey()
+  const u = grainUniforms(map, amount, asp)
+  m.onBeforeCompile = (shader, renderer) => {
+    prev(shader, renderer)
+    Object.assign(shader.uniforms, u)
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\n' + GRAIN_DECL)
+      .replace('#include <alphatest_fragment>', '#include <alphatest_fragment>\n' + GRAIN_APPLY)
+  }
+  m.customProgramCacheKey = () => 'grain|' + prevKey
+  return m
+}
+
 export function paperMaterial(map: THREE.Texture | null, opts: { back?: string; color?: string; emissive?: number } = {}) {
   const key = (map?.uuid ?? 'none') + (opts.back ?? '') + (opts.color ?? '') + (opts.emissive ?? '')
   const c = matCache.get(key)
   if (c) return c
   const back = new THREE.Color(opts.back ?? '#efe6d6')
-  const m = new THREE.MeshStandardMaterial({
+  // Lambert, not Standard: matte paper (it was roughness 0.92) looks the same,
+  // and the per-pixel cost of every light is a fraction of the physical model's.
+  // Every pixel of every piece runs the light loop (hemi, sun, book lamp + the
+  // 8 pooled lights), so this matters most on the iPad's GPU.
+  const m = new THREE.MeshLambertMaterial({
     map,
     color: opts.color ?? '#ffffff',
-    roughness: 0.92,
-    metalness: 0,
     alphaTest: map ? 0.5 : 0,
     side: THREE.DoubleSide,
   })
@@ -215,14 +318,17 @@ export function paperMaterial(map: THREE.Texture | null, opts: { back?: string; 
     m.emissive = new THREE.Color('#ffffff')
     m.emissiveIntensity = opts.emissive
   }
+  const grain = grainUniforms(map)
   m.onBeforeCompile = (shader) => {
     shader.uniforms.uBack = { value: back }
+    Object.assign(shader.uniforms, grain)
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uBack;')
+      .replace('#include <common>', '#include <common>\nuniform vec3 uBack;\n' + GRAIN_DECL)
       .replace(
         '#include <alphatest_fragment>',
         `#include <alphatest_fragment>
-         if (!gl_FrontFacing) diffuseColor.rgb = uBack;`,
+         if (!gl_FrontFacing) diffuseColor.rgb = uBack;
+         ${GRAIN_APPLY}`,
       )
   }
   m.customProgramCacheKey = () => 'paper'

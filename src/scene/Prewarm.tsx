@@ -86,8 +86,8 @@ export function Prewarm() {
       }
       return
     }
-    // after that, about two pieces per frame so the animations keep their frame rate
-    if (pumpTextures((t) => gl.initTexture(t), 2_000_000) > 0) return
+    // after that, a few ms of painting per frame so the animations keep their frame rate
+    if (pumpTextures((t) => gl.initTexture(t)) > 0) return
     // a couple of the other textures per frame (initTexture is a no-op for ones already up)
     for (let i = 0; i < 2 && uploads.current.length; i++) gl.initTexture(uploads.current.pop()!)
     if (!want.current || clock.current < want.current) return

@@ -188,25 +188,30 @@ SVG body (TS template string)
   → <img src="data:image/svg+xml…">   browser decodes the SVG (async)
   → queued paint job                  drawImage into the canvas
   → pumpTextures() (each frame)       paints a budget of jobs + uploads them to the GPU
-  → paperMaterial(texture)            MeshStandardMaterial on a thin plane
+  → paperMaterial(texture)            MeshLambertMaterial + GPU paper grain, on a thin plane
 ```
 
 ### `svgDoc`: making SVG look like printed, die-cut paper
 
-`svgDoc(w, h, body, { cut, grain, edge, defs })` wraps the art in an SVG
-filter chain (see `src/art/texture.ts`):
+`svgDoc(w, h, body, { cut, grain, edge, defs })` wraps the art (see
+`src/art/texture.ts`):
 
-1. **Paper grain:** two `feTurbulence` noises (fine fibres + soft blotches),
-   mixed, turned grey with `feColorMatrix`, and **multiplied** onto the art.
-   Masked back to the art's alpha.
+1. **Paper grain: on the GPU, not in the SVG.** `svgDoc` only records
+   `data-grain="1"`. The paper material multiplies in a small shared tiling
+   noise texture (fine fibres ≈ 900 cells across a piece, soft blotches ≈ 12
+   cells): `color *= 1 − 0.2g + 0.3g·(0.45·fibres + 0.55·blotches)`.
+   - We first did this with SVG `feTurbulence`. It looked great and was fast
+     in Chrome, but **Safari took 100–400 ms to paint each big piece**, which
+     froze the iPad for seconds after every page turn. Moving it to the shader
+     cut the frozen time per turn by ~20× in WebKit. Don't put noise filters
+     in SVGs.
 2. **Die-cut edge:** the art's alpha is blurred once (`feGaussianBlur`), then
    thresholded twice (`feComponentTransfer`) to grow it outward: once for a
    cream paper border, once more for a thin dark rim. The art is merged on top.
    - Do NOT use `feMorphology dilate` for this. It looks the same but was
      ~10× slower to paint and stalled page turns on iPad.
-3. **Deterministic output.** The grain's random seed is a hash of the art
-   itself (`hash(body, w*31+h) % 97`). The same piece always produces the same
-   SVG string, so it hits the texture cache. **Never put a counter or
+3. **Deterministic output.** The same piece must always produce the same SVG
+   string, so it hits the texture cache. **Never put a counter or
    `Math.random()` into an SVG string built during render.** Every re-render
    would repaint and re-upload it. We had this bug, and it caused hitches.
 
@@ -238,8 +243,12 @@ export const texturesPending = () => decoding + rasterQueue.length
 
 - **Why a queue:** painting a 2048 px SVG with filters can take tens of ms.
   Doing it the moment the image decodes caused random freezes mid-animation.
-  Instead `Prewarm` calls `pumpTextures(gl.initTexture, budget)` every frame,
-  so painting and GPU upload happen at a controlled rate.
+  Instead `Prewarm` calls `pumpTextures(gl.initTexture)` every frame, which
+  paints and uploads for at most ~6 ms per frame (always at least one).
+- **Safari quirks:** Safari rasterises an SVG image **at its declared
+  `width`/`height`**, then scales it, and only does so lazily when the canvas
+  is uploaded. So: declare SVGs at (or below) the texture size, and budget the
+  queue by time, not pixels.
 - **Texture sizes:** most pieces 512–1024 px; big pieces opt in to
   `px={2048}`. Page backgrounds are one 2560×1760 SVG across both pages.
 - **Memory:** `useSvgTexture` ref-counts textures (`retainTexture` /
@@ -254,13 +263,17 @@ export const texturesPending = () => decoding + rasterQueue.length
 ### `paperMaterial`
 
 ```ts
-new THREE.MeshStandardMaterial({
-  map, roughness: 0.92, metalness: 0,
+new THREE.MeshLambertMaterial({
+  map,
   alphaTest: 0.5,           // die-cut silhouette, no sorting problems
   side: THREE.DoubleSide,
 })
 // onBeforeCompile: if (!gl_FrontFacing) diffuseColor.rgb = uBack;  → plain cream paper back
+//                  then the paper grain (GRAIN_APPLY)
 ```
+
+Lambert, not Standard: matte paper looks identical, and every pixel of every
+piece runs the light loop, so the cheaper lighting model matters on an iPad.
 
 Cached per (texture, options), so identical pieces share one material.
 Optional `emissive` (uses the map as an emissive map) makes things glow under
@@ -429,8 +442,8 @@ The look is "warm storybook paper", built from a few layers:
    its own its shadows are too blurry for small pop-ups. This light gives
    crisp, soft-edged shadows of the pop-ups on the page. It fades up as the
    book opens.
-4. **Paper material**: roughness 0.92, no metalness, so light reads as matte
-   paper.
+4. **Paper material**: Lambert (pure diffuse), so light reads as matte
+   paper, at a fraction of the per-pixel cost of the physical material.
 5. **Post-processing**: `Bloom` (mipmapBlur, intensity 0.55, threshold 0.82),
    `Vignette`, and `ToneMapping NEUTRAL`. Only bright/emissive things bloom:
    stars, lamp shades, fire, glows.
@@ -475,7 +488,11 @@ console if the pool runs out.
   dragging.
 - **Dive-in** (`cam.push`) during turns, and a blend to a wide low room view
   for the ending.
-- FOV 38, `dpr` clamped to [1, 2].
+- FOV 38, `dpr` clamped to [1, 2], canvas `antialias: false` (the
+  post-processing composer does its own MSAA).
+- **Adaptive resolution:** if the median frame over a calm 2 s window is
+  slower than 21 ms, the pixel ratio steps down by 0.25 (min 1.25). Fast
+  devices never change.
 
 ## B11. Mounting, memory and smoothness
 
@@ -783,6 +800,15 @@ deploy, and a pass on a real iPad.
 - `compileAsync` only sees visible objects. Shared materials help (one
   compiled program serves every paper piece).
 - Cold first load is slower than a normal reload. Measure both.
+- **Measure in Safari's engine, not just Chrome.** Chrome on a fast Mac hid
+  our worst problem completely: Safari painted SVG noise filters 10–50× slower,
+  and the iPad froze for 1–3 s after every page turn. Playwright's WebKit
+  (`npm i playwright` in a scratch folder, then `webkit.launch()`) runs the real
+  engine on a Mac: turn through the whole book and log every
+  `requestAnimationFrame` gap over 50 ms.
+- Put paper grain / noise in a shader, not in SVG filters.
+- Matte paper doesn't need `MeshStandardMaterial`; `MeshLambertMaterial`
+  looks the same and is much cheaper per pixel.
 
 **Layout and art**
 - Keep important pop-ups clear of the story card; it's tall because it's

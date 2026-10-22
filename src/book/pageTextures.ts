@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { PAGE_TEX_H, PAGE_TEX_W } from '../config'
-import { loadSvgImage } from '../art/texture'
+import { loadSvgImage, setGrain } from '../art/texture'
 import type { SpreadDef } from '../story/types'
 
 export const FONT = 'Fredoka'
@@ -344,10 +344,14 @@ function pageNumber(ctx: CanvasRenderingContext2D, n: number, x: number, y: numb
   ctx.restore()
 }
 
-function finish(canvas: HTMLCanvasElement, mirror: boolean) {
+/** the paper-grain amount an svgDoc painting asked for (it's applied by the material, see art/texture.ts) */
+const grainOf = (svg?: string) => parseFloat(svg?.match(/data-grain="([\d.]+)"/)?.[1] ?? '0')
+
+function finish(canvas: HTMLCanvasElement, mirror: boolean, grain = 0) {
   const tex = new THREE.CanvasTexture(canvas)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = 8
+  setGrain(tex, grain, canvas.width, canvas.height)
   if (mirror) {
     tex.repeat.x = -1
     tex.offset.x = 1
@@ -363,7 +367,7 @@ function pageTexture(s: SpreadDef, index: number, side: 0 | 1, mirror: boolean) 
   const h = canvas.height
   paper(ctx, w, h, index * 31 + side * 7)
   spineShade(ctx, w, h, side ? 'left' : 'right')
-  const tex = finish(canvas, mirror)
+  const tex = finish(canvas, mirror, grainOf(s.spreadArt))
   ;(async () => {
     await waitFonts()
     const accent = s.palette.accent
@@ -398,7 +402,7 @@ export function coverTexture(art: string, title: string[], subtitle: string) {
   const h = canvas.height
   ctx.fillStyle = '#c8362f'
   ctx.fillRect(0, 0, w, h)
-  const tex = finish(canvas, false)
+  const tex = finish(canvas, false, grainOf(art))
   ;(async () => {
     await waitFonts()
     await drawSvg(ctx, art, 0, 0, w, h, 'cover')

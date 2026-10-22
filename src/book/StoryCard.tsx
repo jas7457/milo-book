@@ -9,7 +9,7 @@ import { anim } from '../state'
 import { useBook } from '../store'
 import { bus } from '../bus'
 import { markWritten, paraAfter, setWriting, stageOf, useProgress } from '../progress'
-import { svgDoc } from '../art/texture'
+import { svgDoc, addGrain } from '../art/texture'
 import { useSvgTexture } from '../art/useSvgTexture'
 import { INK } from '../art/style'
 import { debug } from '../debug'
@@ -186,14 +186,17 @@ function Pencil({ api }: { api: { pos: THREE.Vector3; show: number } }) {
   const tex = useSvgTexture(pencilArt, 384)
   const mat = useMemo(
     () =>
-      new THREE.MeshStandardMaterial({
-        map: tex,
-        transparent: true,
-        alphaTest: 0.3,
-        roughness: 0.8,
-        side: THREE.DoubleSide,
-        opacity: 0,
-      }),
+      addGrain(
+        new THREE.MeshStandardMaterial({
+          map: tex,
+          transparent: true,
+          alphaTest: 0.3,
+          roughness: 0.8,
+          side: THREE.DoubleSide,
+          opacity: 0,
+        }),
+        tex,
+      ),
     [tex],
   )
   useEffect(() => () => mat.dispose(), [mat])
