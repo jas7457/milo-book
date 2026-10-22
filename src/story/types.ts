@@ -43,6 +43,11 @@ export type SpreadDef = {
   spreadArt?: string
   /** pop-up pieces, rendered in book space inside a SpreadProvider */
   Popups?: FC
+  /**
+   * 'back': not an open spread but the closed book seen from the back (the
+   * final screen). The last leaf and the back board swing over together.
+   */
+  closed?: 'back'
   /** what Milo does when this spread opens */
   miloReact?: 'wave' | 'cheer' | 'point' | 'jump'
 }

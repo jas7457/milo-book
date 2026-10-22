@@ -51,31 +51,54 @@ function labelTex(text: string, sub: string, accent: string) {
     ctx.fillStyle = accent
     ctx.font = `500 34px ${FONT}`
     ctx.fillText(sub, 320, 182)
+    // the slot the strip slides out of
+    const g = ctx.createLinearGradient(596, 0, 616, 0)
+    g.addColorStop(0, 'rgba(60,35,15,0)')
+    g.addColorStop(1, 'rgba(60,35,15,0.35)')
+    ctx.fillStyle = g
+    ctx.fillRect(596, 80, 20, 100)
   })
 }
 
+/**
+ * The paper strip. Most of it lives under the label; only its right end
+ * ("PULL ›" + grip ridges) peeks out at rest, so that end carries the words.
+ */
 function tabTex(color: string) {
-  return canvasTex(512, 160, (ctx) => {
+  return canvasTex(640, 160, (ctx) => {
     ctx.fillStyle = color
     ctx.beginPath()
-    ctx.roundRect(4, 14, 500, 132, [10, 66, 66, 10])
+    ctx.roundRect(4, 14, 632, 132, [8, 66, 66, 8])
     ctx.fill()
-    ctx.fillStyle = 'rgba(255,255,255,0.22)'
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'
     ctx.beginPath()
-    ctx.roundRect(14, 22, 470, 34, 17)
+    ctx.roundRect(4, 112, 632, 34, [0, 0, 66, 8])
     ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,0.24)'
+    ctx.beginPath()
+    ctx.roundRect(14, 22, 600, 30, 15)
+    ctx.fill()
+    // grip ridges just outside the label
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)'
+    ctx.lineWidth = 6
+    ctx.lineCap = 'round'
+    for (const x of [352, 368]) {
+      ctx.beginPath()
+      ctx.moveTo(x, 50)
+      ctx.lineTo(x, 110)
+      ctx.stroke()
+    }
     ctx.fillStyle = '#fff'
-    ctx.font = `700 64px ${FONT}`
+    ctx.font = `700 60px ${FONT}`
     ctx.textAlign = 'center'
-    ctx.fillText('PULL', 300, 102)
+    ctx.fillText('PULL', 458, 101)
     ctx.strokeStyle = '#fff'
     ctx.lineWidth = 12
-    ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.beginPath()
-    ctx.moveTo(408, 52)
-    ctx.lineTo(440, 80)
-    ctx.lineTo(408, 108)
+    ctx.moveTo(556, 54)
+    ctx.lineTo(586, 80)
+    ctx.lineTo(556, 106)
     ctx.stroke()
   })
 }
@@ -107,10 +130,14 @@ export function PullTab({
   const { index, baseY } = useSpread()
   const LW = 0.62
   const LH = 0.25
-  const TW = 0.4
+  const TW = 0.5
   const TH = 0.125
   const SLIDE = 0.26
-  const rest = LW / 2 - TW / 2 + 0.17 // tab end pokes out past the label
+  /** how much of the strip sticks out past the label at rest ("PULL ›" fully readable) */
+  const PEEK = 0.25
+  // the label art has a ~24/640 margin, so its visible right edge is a bit inside LW/2
+  const edge = LW / 2 - (LW * 24) / 640
+  const rest = edge + PEEK - TW / 2
 
   const mats = useMemo(() => {
     const m = (map: THREE.Texture) =>
@@ -229,24 +256,24 @@ export function PullTab({
       <HintHand
         mode="drag"
         want={want}
-        from={() => [rest + TW * 0.22, 0.015, 0]}
-        to={() => [rest + TW * 0.22 + SLIDE * 0.85, 0.015, 0]}
+        from={() => [rest + TW * 0.28, 0.015, 0]}
+        to={() => [rest + TW * 0.28 + SLIDE * 0.85, 0.015, 0]}
         dwell={0.3}
         onMove={demo}
       />
       <Glow map={mats.label.map!} w={LW} h={LH} pad={0.035} on={want} rotation={FLAT} position={[0, 0.003, 0]} />
       <group ref={tab}>
         <Glow map={mats.tab.map!} w={TW} h={TH} pad={0.04} on={want} rotation={FLAT} position={[0, -0.001, 0]} />
-        <mesh material={mats.tab} rotation={[-Math.PI / 2, 0, 0]} onPointerDown={down} {...hover} receiveShadow>
+        <mesh material={mats.tab} rotation={[-Math.PI / 2, 0, 0]} onPointerDown={down} {...hover} receiveShadow renderOrder={1}>
           <planeGeometry args={[TW, TH]} />
         </mesh>
         {/* a generous invisible grab area for small fingers */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[TW * 0.3, 0.001, 0]} onPointerDown={down} {...hover}>
-          <planeGeometry args={[TW * 0.8, 0.3]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[TW / 2 - PEEK / 2 + 0.06, 0.001, 0]} onPointerDown={down} {...hover}>
+          <planeGeometry args={[PEEK + 0.2, 0.3]} />
           <meshBasicMaterial visible={false} />
         </mesh>
       </group>
-      <mesh material={mats.label} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]} onPointerDown={down} {...hover} receiveShadow>
+      <mesh material={mats.label} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]} onPointerDown={down} {...hover} receiveShadow renderOrder={2}>
         <planeGeometry args={[LW, LH]} />
       </mesh>
     </group>
