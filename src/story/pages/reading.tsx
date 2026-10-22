@@ -2,15 +2,16 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { svgDoc } from '../../art/texture'
-import { sparkle, star, starPath } from '../../art/kit'
+import { sparkle, starPath } from '../../art/kit'
 import { INK, limb, rand, woodGrain } from '../../art/style'
 import { dadSitting, miloSitting, momSitting } from '../../art/family'
-import { PopCard } from '../../popup/PopCard'
+import { PopCard, Part } from '../../popup/PopCard'
 import { PullTab } from '../../popup/PullTab'
 import { useSpread } from '../../popup/SpreadContext'
 import { anim } from '../../state'
 import { windowed } from '../../anim/ease'
 import { bus } from '../../bus'
+import { beat } from '../../progress'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
 
@@ -428,18 +429,54 @@ function BookGlow() {
   return <pointLight ref={ref} position={[0, baseY + 0.45, 0.55]} color="#ffd27a" distance={3} decay={1.4} />
 }
 
-const STAR_FLIGHTS: { at: [number, number]; y: number; to: [number, number, number]; s: number }[] = [
-  { at: [-0.28, 0.3], y: 0.42, to: [-3.6, 3.3, -4.2], s: 0.26 },
-  { at: [-0.1, 0.32], y: 0.55, to: [-1.6, 4.4, -5.6], s: 0.2 },
-  { at: [0.1, 0.32], y: 0.5, to: [0.6, 3.8, -4.0], s: 0.3 },
-  { at: [0.3, 0.3], y: 0.42, to: [2.4, 4.6, -5.4], s: 0.22 },
-  { at: [0.0, 0.31], y: 0.66, to: [4.0, 3.1, -3.8], s: 0.24 },
-  { at: [0.2, 0.33], y: 0.7, to: [1.2, 5.2, -7.6], s: 0.18 },
+/** The glowing stars: few, big and clear. Each pops out of the book, then flies up into the room. */
+const STAR_FLIGHTS: {
+  at: [number, number]
+  y: number
+  size: number
+  to: [number, number, number]
+  fill: string
+  stroke: string
+  spin: number
+}[] = [
+  { at: [-0.8, 0.2], y: 0.6, size: 0.34, to: [-2.55, 0.46, -3.0], fill: '#ffd34d', stroke: '#e08a00', spin: 1 },
+  { at: [-0.3, 0.16], y: 0.86, size: 0.4, to: [-1.1, 0.8, -4.2], fill: '#fff09a', stroke: '#e9a800', spin: -1 },
+  { at: [0.32, 0.16], y: 0.84, size: 0.38, to: [0.23, 0.6, -3.0], fill: '#ffc83a', stroke: '#dc7a00', spin: 1 },
+  { at: [0.82, 0.2], y: 0.6, size: 0.34, to: [2.35, 0.92, -4.2], fill: '#fff09a', stroke: '#e9a800', spin: -1 },
 ]
+
+/** one big storybook star: ink outline, soft shine and a little face-less sparkle */
+const bigStar = (fill: string, stroke: string) =>
+  svgDoc(
+    240,
+    240,
+    `<path d="${starPath(120, 124, 108, 54)}" fill="${fill}" stroke="${INK}" stroke-width="9" stroke-linejoin="round"/>
+     <path d="${starPath(120, 128, 92, 46)}" fill="none" stroke="${stroke}" stroke-width="6" stroke-linejoin="round" opacity=".7"/>
+     <path d="${starPath(120, 128, 46, 22)}" fill="#fffbe0" opacity=".85"/>
+     <path d="M70 70 Q 84 52 104 48" stroke="#fff" stroke-width="10" fill="none" stroke-linecap="round" opacity=".8"/>`,
+    { cut: 7 },
+  )
+
+/** stars are sent into the room once; the tab can be pulled again without taking them back */
+const flight = { out: false }
+
+function ReadingDirector() {
+  const { index } = useSpread()
+  const live = useRef(true)
+  useFrame(() => {
+    const away = anim.raise[index].v < 0.3
+    if (away && live.current) {
+      live.current = false
+      flight.out = false
+    } else if (!away) live.current = true
+  })
+  return null
+}
 
 function ReadingPopups() {
   return (
     <>
+      <ReadingDirector />
       {/* back */}
       <PopCard art={bookshelf} size={[0.6, 1.07]} at={[-1.12, -0.84]} delay={0} px={1024} tap="wiggle" rotY={0.1} />
       <PopCard art={lampPole} size={[0.24, 1.0]} at={[-0.6, -0.8]} delay={0.04} tap="none" />
@@ -457,21 +494,32 @@ function ReadingPopups() {
       {STAR_FLIGHTS.map((f, i) => (
         <PopCard
           key={i}
-          art={i % 3 === 1 ? sparkle() : star()}
-          size={[f.s * 1.25, f.s * 1.25]}
+          art={bigStar(f.fill, f.stroke)}
+          size={[f.size, f.size]}
           at={f.at}
           y={f.y}
           delay={0.42 + i * 0.03}
           hinge="spring"
-          emissive={0.8}
+          emissive={0.85}
           idle="float"
+          idleAmp={1.3}
           tap="spin"
-          escape={{ to: f.to, arc: 1.4, scale: 2.4, duration: 1.7 + i * 0.12, spin: Math.PI * 2, on: 'stars' }}
-        />
+          px={512}
+          escape={{ to: f.to, arc: 1.1, scale: 2.2, duration: 1.7 + i * 0.15, spin: Math.PI * 2 * f.spin, on: 'stars-fly' }}
+        >
+          <Part
+            art={sparkle()}
+            size={[f.size * 0.5, f.size * 0.5]}
+            pivot={[f.size * 0.3, f.size * 0.74, 0]}
+            z={0.012}
+            emissive={1}
+            animate={(g, t) => g.scale.setScalar(0.25 + 0.75 * Math.pow(Math.max(0, Math.sin(t * 2.6 + i * 1.7)), 2))}
+          />
+        </PopCard>
       ))}
       <PopCard art={toyBlocks} size={[0.42, 0.37]} at={[0.42, 0.72]} delay={0.44} rotY={-0.15} tap="jump" />
       <PopCard art={toyDigger} size={[0.58, 0.4]} at={[1.2, 0.4]} delay={0.4} rotY={-0.35} tap="wiggle" />
-      <PopCard art={toyFireTruck} size={[0.52, 0.31]} at={[-1.08, -0.2]} delay={0.38} rotY={0.3} tap="jump" />
+      <PopCard art={toyFireTruck} size={[0.52, 0.31]} at={[-1.28, -0.38]} delay={0.38} rotY={0.3} tap="jump" />
       <PullTab
         id="stars"
         label="Let them out!"
@@ -482,6 +530,10 @@ function ReadingPopups() {
         onPull={() => {
           bus.emit('sfx', 'sparkle')
           bus.emit('milo', 'cheer')
+          if (flight.out) return
+          flight.out = true
+          bus.emit('pull', 'stars-fly') // the stars burst out and stay in the room
+          beat('reading', 1)
         }}
       />
     </>
@@ -494,10 +546,10 @@ export const readingSpread: SpreadDef = {
   palette: palettes.glowRoom,
   outfit: 'plain',
   heading: 'Story time',
+  beats: 1,
   text: [
-    'This is *Milo*. Milo is five, and Milo LOVES books.',
-    'Every night he reads with *Mom* and *Dad*...',
-    'but tonight, the book began to *GLOW!*',
+    'This is *Milo*. He LOVES books! Every night he reads with *Mom* and *Dad*... but tonight, the book began to *GLOW!* Pull the tab!',
+    { after: 1, text: '*Whoosh!* Out flew the stars, twinkling all around the room!' },
   ],
   textCard: { x: 0.08, y: 0.56, w: 0.8 },
   spreadArt: readingSpreadArt,
