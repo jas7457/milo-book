@@ -181,7 +181,7 @@ export const dadHead = adultHead(DAD, {
     </g>`,
 })
 
-/** Dad on the couch, turned toward Milo, pointing up at the magic (640×990). */
+/** Dad on the couch, turned toward Milo, both hands on his lap (640×990). */
 export const dadSitting = () =>
   svgDoc(
     640,
@@ -214,12 +214,10 @@ export const dadSitting = () =>
      <!-- arm resting on his lap -->
      ${limb('M196 300 Q 174 452 332 546', '#d6d7d3', 56)}
      <ellipse cx="352" cy="552" rx="28" ry="22" fill="${DAD.skin}" stroke="${INK}" stroke-width="5"/>
-     <!-- arm raised, pointing up at the stars -->
-     ${limb('M346 296 Q 424 276 440 186', '#d6d7d3', 54)}
-     <g transform="translate(380 -40)">
-       <path d="M36 196 Q 52 178 72 190 L 70 150 Q 70 128 84 130 Q 96 132 94 154 L 94 214 Q 92 244 62 244 Q 32 242 30 214 Z" fill="${DAD.skin}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
-       <path d="M40 210 Q 56 204 70 212" stroke="${DAD.skinSh}" stroke-width="4" fill="none" stroke-linecap="round"/>
-     </g>
+     <!-- other hand resting on his knee -->
+     ${limb('M350 300 Q 398 440 440 540', '#d6d7d3', 54)}
+     <ellipse cx="456" cy="556" rx="28" ry="22" fill="${DAD.skin}" stroke="${INK}" stroke-width="5"/>
+     <path d="M444 546 Q 458 540 472 548" stroke="${DAD.skinSh}" stroke-width="4" fill="none" stroke-linecap="round"/>
      <!-- head -->
      <g transform="translate(158 40) scale(0.86)">${dadHead}</g>
      </g>`,
