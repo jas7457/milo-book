@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import gsap from 'gsap'
@@ -10,12 +10,13 @@ import { useSpread } from '../../popup/SpreadContext'
 import { anim } from '../../state'
 import { clamp01 } from '../../anim/ease'
 import { bus } from '../../bus'
+import { beat } from '../../progress'
 import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
 import { buildingSpreadArt } from '../../art/bridge/spread'
 import { bigPine, bigTree, castle, castleFlag, farHills, smallTree, windmill, windmillBlades } from '../../art/bridge/back'
-import { FRAME, SEG, SLOT_X, frameArt, ghostArt, pileArt, segmentArt } from '../../art/bridge/blocks'
+import { FRAME, SEG, SLOT_X, VARIANTS, frameArt, ghostArt, pileArt, segmentArt } from '../../art/bridge/blocks'
 import {
   CRANE, HOOK, TRUCK, TRUCK_WHEELS, craneArt, duckArt, frogArt, hookArt, hoorayArt, reedsArt, reedsArt2, signArt, smokePuff, truckArt, wheelArt,
 } from '../../art/bridge/front'
@@ -26,8 +27,8 @@ import { FLOOR, birdBody, birdWing, boat, hillLeft, hillRight, mountains, valley
  *   back:   far hills (V-fold) with the river valley · the castle town · windmill · trees
  *   middle: the two banks with a GAP · a crane · a waiting toy truck · the NO BRIDGE sign
  *   front:  a pile of toy blocks (3 you can pick up) · ducks · a frog · reeds
- * Drag the 3 blocks, one by one, into the dashed slots of the gap: the bridge grows. When it's done
- * there's confetti and the truck drives across and off into the world.
+ * Drag the 3 blocks, each into its own colour-coded dashed slot of the gap (any order): the bridge grows.
+ * Beats: the number of blocks placed (1..3). When it's done there's confetti and the truck drives across and off.
  */
 
 const spreadArt = buildingSpreadArt
@@ -35,9 +36,16 @@ const spreadArt = buildingSpreadArt
 /* ------------------------------------------------- spread behaviour -- */
 
 const BRIDGE_Z = -0.15
-const FRAME_X = FRAME.w / 2000 + FRAME.x0 // book x of the frame centre (0.65)
-const DECK = 0.24
-const slotAt = (k: number): [number, number] => [SLOT_X[Math.min(2, k)], -0.1]
+/** the bridge frame is drawn BS× bigger than its art's native size so the gap reads clearly */
+const BS = 1.2
+const FRAME_X = 0.52 // book x of the frame centre
+const WORLD_FRAME_X = FRAME.w / 2000 + FRAME.x0 // (0.65) the world copy is not scaled
+const DECK = 0.24 * BS
+/** book x of a point of the frame art (px) */
+const artX = (px: number) => FRAME_X + ((px - FRAME.w / 2) * BS) / 1000
+/** book x of slot k (centre of the block that fills it) */
+const slotX = (k: number) => FRAME_X + (k - 1) * (SEG.w / 1000) * BS
+const slotAt = (k: number): [number, number] => [slotX(k), -0.1]
 
 /** Live state shared by the pieces of this spread (reset when you leave it). */
 const bridge = {
@@ -68,7 +76,6 @@ function resetAll() {
   bridge.slots = [-1, -1, -1]
   bridge.seg = [0, 0, 0]
   bursts.length = 0
-  bus.emit('bridge:count', 0)
 }
 
 /** Resets this spread's state when the page is turned away. */
@@ -85,16 +92,16 @@ function BuildDirector() {
   return null
 }
 
-function place(variant: number) {
-  const k = bridge.count
-  if (k > 2) return
-  bridge.slots[k] = variant
-  bridge.count = k + 1
-  bus.emit('bridge:count', bridge.count)
+/** block `k` (red, yellow, blue) goes into its own slot `k`, in any order */
+function place(k: number) {
+  if (bridge.slots[k] >= 0) return
+  bridge.slots[k] = k
+  bridge.count++
+  beat('building', bridge.count)
   bus.emit('sfx', 'snap')
   gsap.to(bridge.seg, { [k]: 1, duration: 0.55, ease: 'back.out(2.2)' })
   gsap.timeline().to(bridge, { hook: 1, duration: 0.2, ease: 'power2.out' }).to(bridge, { hook: 0, duration: 0.5, ease: 'power2.inOut' })
-  bursts.push({ kind: 'dust', x: SLOT_X[k], y: DECK, z: BRIDGE_Z + 0.04 })
+  bursts.push({ kind: 'dust', x: slotX(k), y: DECK, z: BRIDGE_Z + 0.04 })
   if (bridge.count === 3) finish()
 }
 
@@ -211,17 +218,17 @@ function Fx() {
 
 /* ------------------------------------------------------- the pieces -- */
 
-const GHOST_ART = [1, 2, 3].map(ghostArt)
+const GHOST_ART = [0, 1, 2].map(ghostArt)
 const SEG_ART = [0, 1, 2].map(segmentArt)
-const SEG_SIZE: [number, number] = [SEG.w / 1000, SEG.h / 1000]
-const SEG_Y = (FRAME.h - 630) / 1000 // centre of a block, above the frame's base
+const SEG_SIZE: [number, number] = [(SEG.w / 1000) * BS, (SEG.h / 1000) * BS]
+const SEG_Y = ((FRAME.h - 630) / 1000) * BS // centre of a block, above the frame's base
 
 /** the two banks + the empty slots + the blocks as they arrive */
 function BridgeFrame() {
   return (
-    <PopCard art={frameArt} size={[FRAME.w / 1000, FRAME.h / 1000]} at={[FRAME_X, BRIDGE_Z]} delay={0.12} px={2048} tap="none">
-      {SLOT_X.map((sx, k) => {
-        const rel = sx - FRAME_X
+    <PopCard art={frameArt} size={[(FRAME.w / 1000) * BS, (FRAME.h / 1000) * BS]} at={[FRAME_X, BRIDGE_Z]} delay={0.12} px={2048} tap="none">
+      {[0, 1, 2].map((k) => {
+        const rel = slotX(k) - FRAME_X
         return (
           <group key={k}>
             <Part
@@ -232,8 +239,8 @@ function BridgeFrame() {
               emissive={0.35}
               animate={(g, t) => {
                 g.visible = bridge.slots[k] < 0
-                const active = k === bridge.count
-                g.scale.setScalar(active ? 1 + Math.sin(t * 4) * 0.04 : 0.94)
+                g.scale.setScalar(1 + Math.sin(t * 4 + k * 1.3) * 0.04)
+                g.position.y = SEG_Y + Math.sin(t * 3 + k * 1.3) * 0.012
               }}
             />
             {SEG_ART.map((art, v) => (
@@ -286,15 +293,17 @@ function Crane() {
 }
 
 /** the toy truck waits on the near bank; when the bridge is done it drives over and off into the world */
-const profile = (x: number) => (x < -0.2 ? 0 : x < 0.05 ? (DECK * (x + 0.2)) / 0.25 : x < 1.25 ? DECK : x < 1.5 ? (DECK * (1.5 - x)) / 0.25 : 0)
+const profile = (x: number) => {
+  return x < artX(50) ? 0 : x < artX(300) ? (DECK * (x - artX(50))) / (artX(300) - artX(50)) : x < artX(1500) ? DECK : x < artX(1750) ? (DECK * (artX(1750) - x)) / (artX(1750) - artX(1500)) : 0
+}
 const TK = 0.5 / TRUCK.w
 const TP = (x: number, y: number) => [(x - TRUCK.w / 2) * TK, (TRUCK.h - y) * TK] as const
 
 function Truck() {
   const ref = useRef<THREE.Group>(null!)
-  const X0 = 0.0
+  const X0 = artX(380)
   useFrame((s) => {
-    const x = X0 + bridge.drive * 1.05
+    const x = X0 + bridge.drive * (artX(1330) - X0)
     const a = profile(x - 0.17)
     const b = profile(x + 0.17)
     const moving = bridge.drive > 0.001 && bridge.drive < 0.999 ? 1 : 0
@@ -420,30 +429,27 @@ function Castle() {
 }
 
 const dragBlocks: { v: number; at: [number, number] }[] = [
-  { v: 0, at: [0.86, 0.84] },
-  { v: 1, at: [1.16, 0.95] },
-  { v: 2, at: [1.44, 0.8] },
+  { v: 0, at: [0.78, 0.84] },
+  { v: 1, at: [1.12, 0.95] },
+  { v: 2, at: [1.45, 0.8] },
 ]
 
-/** the three blocks to carry across, each fits the next free slot */
+/** the three blocks to carry across: red, yellow and blue each fit the slot with their own colour */
 function Blocks() {
-  const [count, setCount] = useState(0)
-  useEffect(() => bus.on('bridge:count', (n) => setCount(n as number)), [])
-  const target = { at: slotAt(count), r: 0.26, y: DECK + 0.02 }
   return (
     <>
       {dragBlocks.map(({ v, at }, i) => (
         <DragPiece
           key={v}
           art={SEG_ART[v]}
-          size={[0.34, 0.333]}
+          size={SEG_SIZE}
           at={at}
           delay={0.36 + i * 0.04}
           rotY={-0.1 + i * 0.1}
           idle="bob"
-          target={target}
+          target={{ at: slotAt(v), r: 0.15, y: DECK + 0.02 }}
           consume
-          color="#ffffff"
+          color={VARIANTS[v].light}
           onDone={() => place(v)}
         />
       ))}
@@ -520,7 +526,7 @@ function WorldBridge() {
             key={`${k}-${v}`}
             art={art}
             size={WSEG}
-            position={[WB.x + (sx - FRAME_X) * WB.s, 0.13, WB.z + 0.08]}
+            position={[WB.x + (sx - WORLD_FRAME_X) * WB.s, 0.13, WB.z + 0.08]}
             hinge="drop"
             tap="none"
             px={512}
@@ -627,11 +633,13 @@ export const buildSpread: SpreadDef = {
   palette: palettes.building,
   outfit: 'hardhat',
   heading: 'Bridge builder',
+  beats: 3,
   text: [
-    'The shiny thing was a *treasure map!* The path went over the river.',
-    `But there was no bridge. *"Let's build one!"* said Milo.`,
-    'One block, two blocks... the bridge stretched *all the way across!*',
+    `The shiny thing was a *treasure map!* The path crossed a river... but there was *no bridge!* "Let's build one!" said Milo. Pop the blocks in the gaps!`,
+    { after: 1, text: '*Click!* The first block fit.' },
+    { after: 3, text: 'Two blocks, three blocks... the bridge went *all the way across!*' },
   ],
+  textCard: { x: 0, y: 0, w: 0.75 },
   spreadArt,
   Popups: BuildPopups,
   miloReact: 'point',

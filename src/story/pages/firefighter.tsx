@@ -18,6 +18,7 @@ import { useSpread } from '../../popup/SpreadContext'
 import { anim } from '../../state'
 import { clamp01, easeOutBack, windowed } from '../../anim/ease'
 import { bus } from '../../bus'
+import { beat } from '../../progress'
 import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
@@ -122,6 +123,7 @@ function FireDirector() {
 
 function putOut() {
   fire.done = true
+  beat('firefighter', 1)
   const tl = (timeline = gsap.timeline())
   tl.add(() => {
     bus.emit('sfx', 'sparkle')
@@ -957,11 +959,12 @@ export const fireSpread: SpreadDef = {
   palette: palettes.fire,
   outfit: 'firefighter',
   heading: 'Fire rescue!',
+  beats: 1,
   text: [
-    'Over the bridge, Milo saw *smoke!* Ding-ding-ding!',
-    'Firefighter Milo jumped onto the big red *fire truck*.',
-    'He aimed the hose... *SPLOOSH!* The fire went out!',
+    '*Ding-ding-ding!* Smoke over the bakery! Firefighter Milo jumped on the big red *fire truck.* Quick, aim the *hose!*',
+    { after: 1, text: '*SPLOOSH!* The fire went out. The baker cheered, and a *rainbow* popped up!' },
   ],
+  textCard: { x: 0, y: 0, w: 0.75 },
   spreadArt: fireSpreadArt,
   Popups: FirePopups,
   miloReact: 'jump',

@@ -56,17 +56,19 @@ export const segmentArt = (v: number) => {
   )
 }
 
-/** the dashed ghost where a block will go, with its number */
-export const ghostArt = (n: number) => {
+/** the dashed ghost where a block will go: a dashed outline, a faint arch in the block's own colour and a bouncing arrow */
+export const ghostArt = (v: number) => {
   const { w, h } = SEG
+  const c = VARIANTS[v]
   return svgDoc(
     w,
     h,
-    `<rect x="14" y="14" width="${w - 28}" height="${h - 28}" rx="18" fill="#ffffff" opacity=".22"/>
-     <rect x="14" y="14" width="${w - 28}" height="${h - 28}" rx="18" fill="none" stroke="#ffffff" stroke-width="8" stroke-dasharray="26 18" stroke-linecap="round" opacity=".95"/>
-     <path d="M70 ${h - 14} L 70 224 A 83 83 0 0 1 236 224 L 236 ${h - 14}" fill="none" stroke="#fff" stroke-width="5" stroke-dasharray="14 12" opacity=".7"/>
-     <circle cx="${w / 2}" cy="176" r="42" fill="#fff" opacity=".9" stroke="#2f8be0" stroke-width="5"/>
-     <text x="${w / 2}" y="193" text-anchor="middle" font-family="${FONT}" font-weight="700" font-size="52" fill="#2f8be0">${n}</text>`,
+    `<rect x="14" y="14" width="${w - 28}" height="${h - 28}" rx="18" fill="#ffffff" opacity=".28"/>
+     <path d="M62 ${h - 14} L 62 224 A 91 91 0 0 1 244 224 L 244 ${h - 14} Z" fill="${c.body}" opacity=".55"/>
+     <rect x="14" y="14" width="${w - 28}" height="${h - 28}" rx="18" fill="none" stroke="${c.body}" stroke-width="12" stroke-dasharray="26 18" stroke-linecap="round"/>
+     <rect x="14" y="14" width="${w - 28}" height="${h - 28}" rx="18" fill="none" stroke="#ffffff" stroke-width="5" stroke-dasharray="26 18" stroke-linecap="round" opacity=".95"/>
+     <path d="M${w / 2 - 34} 130 L ${w / 2} 176 L ${w / 2 + 34} 130" fill="none" stroke="#fff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+     <path d="M${w / 2 - 34} 130 L ${w / 2} 176 L ${w / 2 + 34} 130" fill="none" stroke="${c.dark}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>`,
     { grain: 0 },
   )
 }
