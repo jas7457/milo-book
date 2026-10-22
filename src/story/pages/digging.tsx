@@ -11,6 +11,7 @@ import { useSpread } from '../../popup/SpreadContext'
 import { anim } from '../../state'
 import { windowed } from '../../anim/ease'
 import { bus } from '../../bus'
+import { beat } from '../../progress'
 import { Cutout } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
@@ -20,8 +21,8 @@ import type { SpreadDef } from '../types'
  *   back:   the DIG SITE gantry + dirt mounds (V-fold) · a swaying tower crane
  *   middle: the excavator (jointed boom / stick / bucket with hydraulic rams, a
  *           cab with Milo at the controls) · Robo's dump truck · pipes · barrel
- *   front:  the dirt pile (three scoops tall) · cones · barrier · shovel · rocks
- * Tap the excavator (or the pile): scoop → swing → dump into the truck. Three
+ *   front:  the dirt pile (two scoops tall) · cones · barrier · shovel · rocks
+ * Tap the excavator (or the pile): scoop → swing → dump into the truck. Two
  * scoops and the pile is gone — a shiny treasure map pops out of the hole, the
  * truck drives off into the world, and the map flies away to the next adventure.
  */
@@ -36,8 +37,9 @@ const rot = (x: number, y: number, a: number): [number, number] => [x * Math.cos
 const EX_AT: [number, number] = [-0.1, -0.4]
 const TRUCK_AT: [number, number] = [-1.04, -0.62]
 const PILE_AT: [number, number] = [1.12, -0.3]
+const SCOOPS = 2
 const MAP_AT: [number, number] = [1.12, -0.3]
-const MAP_TO: [number, number, number] = [2.4, 0.2, -2.4]
+const MAP_TO: [number, number, number] = [2.1, 0.2, -2.4]
 const TRUCK_TO: [number, number, number] = [-1.6, 0, -5.0]
 
 /* the machine's joints, in house space (origin = turntable centre, y up) */
@@ -199,6 +201,7 @@ function bucketWorld(mouth = false): [number, number, number] {
 let baseYNow = 0
 
 function reveal() {
+  beat('digging', 2) // the treasure map is found
   bus.emit('sfx', 'sparkle')
   bus.emit('milo', 'cheer')
   const [x, , z] = [MAP_AT[0], 0, MAP_AT[1]]
@@ -232,7 +235,7 @@ function sendMap() {
 }
 
 function scoop() {
-  if (dig.scoops + (dig.busy ? 1 : 0) + dig.queued >= 3) {
+  if (dig.scoops + (dig.busy ? 1 : 0) + dig.queued >= SCOOPS) {
     if (!dig.busy) {
       bus.emit('sfx', 'sparkle')
       bus.emit('milo', 'cheer')
@@ -246,8 +249,9 @@ function scoop() {
   dig.busy = true
   dig.tapped = true
   const n = dig.scoops
-  const last = n === 2
-  const layer = String(2 - n)
+  const last = n === SCOOPS - 1
+  // the pile shrinks in stages: first scoop takes the peak, the last takes the rest
+  const shrink = last ? { 0: 0, 1: 0, 2: 0 } : { 0: 0.72, 1: 0.5, 2: 0 }
   const tl = gsap.timeline({
     onComplete: () => {
       dig.scoops++
@@ -276,7 +280,7 @@ function scoop() {
     }, 0.72)
     .to(dig, { ...DIGEND, duration: 0.9, ease }, 0.65)
     .to(dig, { carry: 1, duration: 0.35, ease: 'back.out(2)' }, 0.85)
-    .to(dig.pile, { [layer]: 0, duration: 0.55, ease: 'power2.in' }, 0.85)
+    .to(dig.pile, { ...shrink, duration: 0.55, ease: 'power2.in' }, 0.85)
     .add(() => {
       const [x, y, z] = bucketWorld()
       addBurst({ x, y: baseYNow + y + 0.05, z: z + 0.2, n: 10, kind: 'dirt', up: 1.2, spread: 0.8 })
@@ -292,6 +296,9 @@ function scoop() {
       const [x, y, z] = bucketWorld(true)
       addBurst({ x, y: baseYNow + y, z: z - 0.03, n: 22, kind: 'dirt', up: -0.1, spread: 0.5 })
       bus.emit('sfx', 'boing')
+    }, 3.1)
+    .add(() => {
+      if (!last) beat('digging', 1) // first scoop dumped in the truck
     }, 3.1)
     .to(dig, { carry: 0, duration: 0.3 }, 3.1)
     .to(dig, { load: n + 1, duration: 0.55, ease: 'back.out(2.2)' }, 3.3)
@@ -341,26 +348,36 @@ function Reveal({ at, children }: { at: [number, number]; children: ReactNode })
   )
 }
 
-/** A dashed ring on the page: "dig here!" */
+/** A dashed ring standing round the dirt pile (same plane as the pile): "dig here!" */
 function HintRing() {
   const { baseY, index } = useSpread()
   const tex = useMemo(() => svgTexture(A.hintRing, 256), [])
   const mat = useMemo(() => new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }), [tex])
+  const g = useRef<THREE.Group>(null!)
   const m = useRef<THREE.Mesh>(null!)
   useFrame((s, dt) => {
     const t = s.clock.elapsedTime
     const open = windowed(anim.raise[index].v, 0.5) >= 1
-    const show = open && !dig.busy && dig.scoops < 3 ? 0.8 + Math.sin(t * 4) * 0.2 : 0
+    const show = open && !dig.busy && dig.scoops < SCOOPS ? 0.8 + Math.sin(t * 4) * 0.2 : 0
     mat.opacity += (show - mat.opacity) * Math.min(1, dt * 8)
-    const k = 0.86 * (1 + Math.sin(t * 3) * 0.05)
-    m.current.scale.set(k, k, 1)
-    m.current.rotation.set(-Math.PI / 2, 0, t * 0.5)
-    m.current.visible = mat.opacity > 0.01
+    // wrap the pile as it is now: as tall as its highest layer still standing
+    let top = 0
+    A.pileLayers.forEach((l, i) => {
+      if (dig.pile[i] > 0.01) top = Math.max(top, (l.y + l.h * dig.pile[i]) * PK)
+    })
+    const k = 1 + Math.sin(t * 3) * 0.04
+    const hgt = (top + 0.2) * k
+    g.current.position.y = baseY + top * 0.5 + 0.02
+    g.current.scale.set(1.12 * k, Math.max(0.3, hgt), 1)
+    m.current.rotation.z = t * 0.5
+    g.current.visible = mat.opacity > 0.01
   })
   return (
-    <mesh ref={m} material={mat} position={[PILE_AT[0], baseY + 0.006, PILE_AT[1] + 0.1]} renderOrder={2}>
-      <planeGeometry args={[1, 1]} />
-    </mesh>
+    <group ref={g} position={[PILE_AT[0], baseY, PILE_AT[1] + 0.07]}>
+      <mesh ref={m} material={mat} renderOrder={2}>
+        <planeGeometry args={[1, 1]} />
+      </mesh>
+    </group>
   )
 }
 
@@ -516,7 +533,7 @@ function DirtPile() {
       tap="none"
       contact={false}
       onTap={() => scoop()}
-      hint={() => !dig.busy && dig.scoops < 3}
+      hint={() => !dig.busy && dig.scoops < SCOOPS}
     >
       {A.pileLayers.map((l, i) => (
         <Part
@@ -545,7 +562,7 @@ function DirtPile() {
         animate={(g, t) => {
           const u = g.userData as { s?: number }
           const open = windowed(anim.raise[useSpreadIndex.v].v, 0.5) >= 1
-          const want = open && !dig.busy && dig.scoops < 3 ? 1 : 0
+          const want = open && !dig.busy && dig.scoops < SCOOPS ? 1 : 0
           u.s = (u.s ?? 0) + (want - (u.s ?? 0)) * 0.15
           g.scale.setScalar(Math.max(0.001, u.s * (1 + Math.sin(t * 6) * 0.07)))
           g.position.y = 0.62 + Math.sin(t * 4) * 0.02
@@ -668,8 +685,8 @@ function Popups() {
         <PopCard
           art={A.treasureMap}
           size={[0.7, 0.544]}
-          at={[0, 0.12]}
-          y={0.02}
+          at={[0.24, 0.02]}
+          y={0.5}
           delay={0}
           idle="float"
           tap="jump"
@@ -744,10 +761,11 @@ export const digSpread: SpreadDef = {
   palette: palettes.digSite,
   outfit: 'hardhat',
   heading: 'Dig, dig, dig!',
+  beats: 2,
   text: [
-    'Robo zoomed out the door... *beep beep!* Milo raced after him to the *dig site*.',
-    'Milo climbed into the big yellow *excavator*. Scoop! Dump! Scoop!',
-    'Under all that dirt... something *shiny!*',
+    'Robo zoomed off to the *dig site*, and Milo raced after him! Hop in the big yellow *excavator*. Tap the dirt!',
+    { after: 1, text: '*Scoop!* Milo dumped the dirt in Robo\'s truck. *Thump!*' },
+    { after: 2, text: '*Scoop!* Look! Under the dirt... a *treasure map!*' },
   ],
   spreadArt: A.digSpreadArt,
   Popups,

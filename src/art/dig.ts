@@ -717,34 +717,96 @@ export const holeGlint = svgDoc(
 
 /* ------------------------------------------------------------------------ treasure map -- */
 
+/** An unmistakable classic treasure map: torn parchment with rolled ends, a dotted trail, a BIG red X. */
+const mapSheet = (() => {
+  // torn top / bottom edges (deterministic), straight-ish sides under the rolls
+  const r = rand(31)
+  const edge = (y: number, dir: number, x0: number, x1: number) => {
+    let d = ''
+    const n = 14
+    for (let i = 0; i <= n; i++) {
+      const x = x0 + ((x1 - x0) * i) / n
+      d += ` L ${x.toFixed(0)} ${(y + dir * (i % 2 ? 7 + r() * 6 : -2 + r() * 5)).toFixed(0)}`
+    }
+    return d
+  }
+  const top = edge(26, 1, 44, 318)
+  const bottomPts = edge(254, -1, 318, 44)
+  return `M44 30${top} L 320 34 Q 326 140 318 252${bottomPts} Q 36 150 44 30 Z`
+})()
+
 export const treasureMap = svgDoc(
   360,
   280,
-  `<radialGradient id="mg"><stop offset="0" stop-color="#fff6b0" stop-opacity=".95"/><stop offset="1" stop-color="#ffe27a" stop-opacity="0"/></radialGradient>
-   <circle cx="180" cy="140" r="140" fill="url(#mg)" stroke="none"/>
-   <!-- unrolled tail with the trail -->
-   <path d="M70 188 Q 60 96 130 80 L 262 70 Q 300 74 296 118 L 292 196 Q 220 214 70 188 Z" fill="#f6e3b0" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>
-   <path d="M86 176 Q 80 112 138 96 L 258 88 Q 280 90 280 120 L 276 182 Q 210 196 86 176 Z" fill="#f0d08e" opacity=".6"/>
-   <path d="M104 150 C 140 110 170 170 204 130 S 250 120 262 104" stroke="#d0372a" stroke-width="6" stroke-dasharray="4 12" stroke-linecap="round" fill="none"/>
-   <path d="M244 130 L 270 156 M270 130 L 244 156" stroke="#d0372a" stroke-width="10" stroke-linecap="round"/>
-   <path d="M104 106 Q 120 96 138 104 Q 128 118 104 106 Z" fill="#7fc46a" stroke="${INK}" stroke-width="3"/>
-   <path d="M112 168 q 12 -22 28 -4 q 10 14 22 -6" stroke="#6aa6d8" stroke-width="7" fill="none" stroke-linecap="round"/>
-   <!-- the roll -->
-   <rect x="44" y="176" width="272" height="64" rx="32" fill="#efd392" stroke="${INK}" stroke-width="6"/>
-   <path d="M60 192 Q 180 214 300 192" stroke="#cfa860" stroke-width="6" fill="none" stroke-linecap="round" opacity=".8"/>
-   <path d="M60 218 Q 180 236 300 218" stroke="#fff6d2" stroke-width="5" fill="none" stroke-linecap="round" opacity=".7"/>
-   <ellipse cx="316" cy="208" rx="24" ry="32" fill="#f8e6b4" stroke="${INK}" stroke-width="6"/>
-   <path d="M316 208 m -4 -2 a 8 10 0 1 1 8 4 a 15 18 0 1 1 -14 -2" stroke="#b98b4a" stroke-width="4" fill="none" stroke-linecap="round"/>
-   <ellipse cx="44" cy="208" rx="22" ry="32" fill="#e6c880" stroke="${INK}" stroke-width="6"/>
-   <!-- ribbon + bow -->
-   <path d="M150 174 L 150 242 L 188 242 L 188 174 Z" fill="#e8322b" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
-   <path d="M156 178 L 156 238" stroke="#ff8a7a" stroke-width="5" opacity=".8"/>
-   <path d="M168 206 Q 120 164 108 196 Q 112 226 168 210 Z M170 206 Q 218 164 232 198 Q 226 228 170 212 Z" fill="#e8322b" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
-   <circle cx="169" cy="208" r="12" fill="#c0261b" stroke="${INK}" stroke-width="4"/>
-   <path d="M168 220 Q 160 252 144 262 M172 220 Q 182 254 198 258" stroke="${INK}" stroke-width="12" fill="none" stroke-linecap="round"/><path d="M168 220 Q 160 252 144 262 M172 220 Q 182 254 198 258" stroke="#e8322b" stroke-width="6" fill="none" stroke-linecap="round"/>
+  `<defs>
+     <radialGradient id="mpP" cx=".5" cy=".5" r=".75"><stop offset="0" stop-color="#fdf0c2"/><stop offset=".65" stop-color="#f3d896"/><stop offset="1" stop-color="#d9a95c"/></radialGradient>
+     <clipPath id="mpC"><path d="${mapSheet}"/></clipPath>
+     <linearGradient id="mpR" x1="0" x2="1"><stop offset="0" stop-color="#c99a52"/><stop offset=".35" stop-color="#f6dfa2"/><stop offset=".7" stop-color="#e6c07a"/><stop offset="1" stop-color="#b98842"/></linearGradient>
+   </defs>
+   <!-- the sheet -->
+   <path d="${mapSheet}" fill="url(#mpP)" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+   <g clip-path="url(#mpC)">
+     <path d="${mapSheet}" fill="none" stroke="#b8793a" stroke-width="22" opacity=".28"/>
+     <ellipse cx="96" cy="206" rx="34" ry="22" fill="#c98f4a" opacity=".18"/><ellipse cx="292" cy="212" rx="22" ry="14" fill="#c98f4a" opacity=".2"/>
+     <!-- fold creases -->
+     <path d="M133 28 L 136 256 M226 28 L 223 256 M44 142 L 318 140" stroke="#a9733a" stroke-width="3" opacity=".3"/>
+     <path d="M137 28 L 140 256 M227 28 L 224 256 M44 146 L 318 144" stroke="#fff8dc" stroke-width="3" opacity=".5"/>
+     <!-- sea + island -->
+     <path d="M104 146 Q 112 100 176 98 Q 250 92 282 130 Q 304 172 270 214 Q 220 250 150 232 Q 96 214 104 146 Z" fill="#9fd6e6" stroke="#4f9db6" stroke-width="4" stroke-linejoin="round"/>
+     <path d="M118 150 Q 126 112 178 110 Q 238 106 266 134" fill="none" stroke="#d6f2f8" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+     <path d="M130 214 q 9 -9 18 0 t 18 0 M232 228 q 9 -9 18 0 t 18 0 M268 112 q 8 -8 16 0 t 16 0" stroke="#3f86a3" stroke-width="4" fill="none" stroke-linecap="round"/>
+     <path d="M150 160 Q 148 130 190 128 Q 240 122 258 154 Q 268 188 232 200 Q 190 212 160 192 Q 148 180 150 160 Z" fill="#f1d48a" stroke="${INK}" stroke-width="4.5" stroke-linejoin="round"/>
+     <path d="M158 166 Q 160 140 192 138 Q 232 134 246 152 Q 214 150 190 160 Q 170 168 158 166 Z" fill="#7cc35a"/>
+     <path d="M168 196 Q 200 206 234 192" stroke="#d7b062" stroke-width="5" fill="none" stroke-linecap="round"/>
+     <!-- hills on the mainland -->
+     <path d="M52 124 L 76 82 L 94 108 L 108 90 L 130 124 Z" fill="#b7885a" stroke="${INK}" stroke-width="4.5" stroke-linejoin="round"/>
+     <path d="M76 82 L 66 102 L 76 98 L 82 106 L 88 98 Z" fill="#fff" opacity=".85"/>
+     <path d="M94 108 L 108 90 L 130 124 L 108 124 Z" fill="#8f6238" opacity=".55"/>
+     <!-- palm tree -->
+     <path d="M178 150 Q 172 128 184 108" stroke="${INK}" stroke-width="13" fill="none" stroke-linecap="round"/>
+     <path d="M178 150 Q 172 128 184 108" stroke="#b5743a" stroke-width="7" fill="none" stroke-linecap="round"/>
+     <g stroke="${INK}" stroke-width="3.5" stroke-linejoin="round" fill="#4eb04a">
+       <path d="M184 108 Q 158 76 132 100 Q 158 106 184 116 Z"/>
+       <path d="M184 108 Q 166 70 142 74 Q 158 96 184 112 Z"/>
+       <path d="M184 108 Q 200 68 228 74 Q 206 96 184 112 Z"/>
+       <path d="M184 108 Q 214 78 236 100 Q 210 106 184 116 Z"/>
+       </g>
+     <circle cx="181" cy="113" r="4.5" fill="#7a4a26" stroke="${INK}" stroke-width="2.5"/><circle cx="190" cy="114" r="4.5" fill="#7a4a26" stroke="${INK}" stroke-width="2.5"/>
+     <!-- the dotted trail from the start (bottom-left) to the X -->
+     <circle cx="70" cy="222" r="10" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="70" cy="222" r="4" fill="#3f86d6"/>
+     <path d="M82 218 C 104 190 118 236 146 216 S 190 214 206 190 S 214 176 226 176" stroke="${INK}" stroke-width="12" fill="none" stroke-dasharray="0.1 17" stroke-linecap="round"/>
+     <path d="M82 218 C 104 190 118 236 146 216 S 190 214 206 190 S 214 176 226 176" stroke="#e23a2a" stroke-width="7.5" fill="none" stroke-dasharray="0.1 17" stroke-linecap="round"/>
+     <!-- the BIG red X -->
+     <path d="M206 160 L 248 202 M248 160 L 206 202" stroke="${INK}" stroke-width="22" stroke-linecap="round"/>
+     <path d="M206 160 L 248 202 M248 160 L 206 202" stroke="#e8281c" stroke-width="14" stroke-linecap="round"/>
+     <path d="M210 163 L 224 177" stroke="#ff9a8a" stroke-width="4" stroke-linecap="round"/>
+     <!-- compass rose -->
+     <g transform="translate(262 70) scale(.92)">
+       <circle r="30" fill="#fdf0c2" stroke="${INK}" stroke-width="4.5"/>
+       <circle r="24" fill="none" stroke="#c0883f" stroke-width="2.5" stroke-dasharray="3 4"/>
+       <path d="M0 -36 L 8 -8 L 36 0 L 8 8 L 0 36 L -8 8 L -36 0 L -8 -8 Z" fill="#fff" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>
+       <path d="M0 -36 L 8 -8 L 0 0 Z M0 36 L -8 8 L 0 0 Z M36 0 L 8 8 L 0 0 Z M-36 0 L -8 -8 L 0 0 Z" fill="#3f86d6"/>
+       <path d="M0 -36 L 8 -8 L 0 0 L -8 -8 Z" fill="#e8281c" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+       <circle r="4.5" fill="#ffd34d" stroke="${INK}" stroke-width="2.5"/>
+     </g>
+     <!-- a little shark fin in the sea -->
+     <path d="M112 186 Q 122 166 126 160 Q 128 176 138 186 Z" fill="#7f95a8" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>
+     <path d="M104 190 q 8 -5 16 0 t 18 0" stroke="#3f86a3" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+   </g>
+   <!-- rolled ends -->
+   <g stroke-linejoin="round">
+     <path d="M20 40 Q 20 26 34 24 L 52 24 Q 62 26 62 40 L 62 246 Q 62 260 50 262 L 32 262 Q 20 260 20 246 Z" fill="url(#mpR)" stroke="${INK}" stroke-width="5"/>
+     <ellipse cx="41" cy="30" rx="21" ry="9" fill="#f9e7b0" stroke="${INK}" stroke-width="4"/>
+     <path d="M41 30 m -10 0 a 10 5 0 1 1 20 0 a 6 3 0 1 1 -12 0" fill="none" stroke="#a9733a" stroke-width="2.5" stroke-linecap="round"/>
+     <path d="M28 44 L 28 244" stroke="#fff8dc" stroke-width="4" opacity=".6" stroke-linecap="round"/>
+     <path d="M298 40 Q 298 26 312 24 L 330 24 Q 340 26 340 40 L 340 246 Q 340 260 328 262 L 310 262 Q 298 260 298 246 Z" fill="url(#mpR)" stroke="${INK}" stroke-width="5"/>
+     <ellipse cx="319" cy="30" rx="21" ry="9" fill="#f9e7b0" stroke="${INK}" stroke-width="4"/>
+     <path d="M319 30 m -10 0 a 10 5 0 1 1 20 0 a 6 3 0 1 1 -12 0" fill="none" stroke="#a9733a" stroke-width="2.5" stroke-linecap="round"/>
+     <path d="M306 44 L 306 244" stroke="#fff8dc" stroke-width="4" opacity=".6" stroke-linecap="round"/>
+   </g>
    <!-- gold shine -->
-   <path d="M80 60 Q 84 76 100 80 Q 84 84 80 100 Q 76 84 60 80 Q 76 76 80 60 Z" fill="#fff" stroke="#ffd34d" stroke-width="3"/>
-   <path d="M310 50 Q 313 62 326 65 Q 313 68 310 80 Q 307 68 294 65 Q 307 62 310 50 Z" fill="#fff" stroke="#ffd34d" stroke-width="3"/>`,
+   <path d="M20 8 Q 23 18 33 21 Q 23 24 20 34 Q 17 24 7 21 Q 17 18 20 8 Z" fill="#fff" stroke="#ffd34d" stroke-width="3"/>
+   <path d="M342 250 Q 345 260 355 263 Q 345 266 342 276 Q 339 266 329 263 Q 339 260 342 250 Z" fill="#fff" stroke="#ffd34d" stroke-width="3"/>`,
   { cut: 5 },
 )
 
