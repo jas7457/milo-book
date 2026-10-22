@@ -1,5 +1,5 @@
-import { useMemo, useRef, type ReactNode } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import gsap from 'gsap'
 import { svgDoc } from '../../art/texture'
@@ -13,6 +13,7 @@ import { anim } from '../../state'
 import { clamp01, easeOutBack } from '../../anim/ease'
 import { bus } from '../../bus'
 import { beat } from '../../progress'
+import { heard } from '../../cue'
 import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
@@ -23,7 +24,9 @@ import type { SpreadDef } from '../types'
  *   middle: Robo the sleepy robot · the workbench · an open toolbox
  *   front:  a battery and a drill you can pick up
  * Drag the battery into Robo: he powers up, waves and walks into the world.
- * Hold the drill on the cardboard box: it gets wheels and zooms away.
+ * Hold the drill on the cardboard box: it drills two holes. Then drag the two
+ * loose wheels onto the holes (either wheel fits either hole): they snap on and
+ * the box car zooms away.
  */
 
 const MARKER = `'Marker Felt', 'Chalkboard SE', 'Comic Sans MS', sans-serif`
@@ -453,13 +456,43 @@ const drill = svgDoc(
 
 /** Live state shared by the pieces of this spread (reset when you leave it). */
 const robo = { power: 0, battery: false, talk: 0 }
-const car = { wheels: 0, roll: 0 }
+const car = { flag: 0, roll: 0 }
+/** how far each hole's wheel has popped on (0..1) */
+const mount = [0, 0]
 const drillState: DragState = { progress: 0, over: false, done: false, held: false }
+const wheelStates: DragState[] = [0, 1].map(() => ({ progress: 0, over: false, done: false, held: false }))
+/** which hole each loose wheel went into (-1: still loose) and which holes are full */
+const plan = { placed: [-1, -1], taken: [false, false], aim: 0 }
 
 // Robo stands up at the back of the left page, to the right of the story card
 // (card spans x -1.56…-0.36), so his whole body and chest slot are in view.
 const ROBO_AT: [number, number] = [-0.08, -0.55]
 const BOX_AT: [number, number] = [0.66, 0.18]
+// the loose wheels lie on the page at the front right, clear of the card, battery and drill
+const WHEEL_AT: [number, number][] = [
+  [0.6, 0.5],
+  [1.0, 0.5],
+]
+const DRILL_AT: [number, number] = [1.28, 0.72]
+/** where hole h is, on the page just in front of the box */
+const holePage = (h: number): [number, number] => [BOX_AT[0] + (WHEELS[h][0] - BOX.w / 2) * BK, BOX_AT[1] + 0.06]
+/**
+ * Which hole wheel i is heading for. Either wheel fits either hole: while you carry
+ * it, it's the free hole nearest your finger; otherwise its own hole (or the other
+ * one if that is taken). Once it's on, it stays that hole.
+ */
+const aimFor = (i: number) => {
+  if (plan.placed[i] >= 0) return plan.placed[i]
+  if (wheelStates[i].held) return plan.taken[plan.aim] ? 1 - plan.aim : plan.aim
+  return plan.taken[i] ? 1 - i : i
+}
+const wheelTargets = [0, 1].map((i) => ({
+  get at() {
+    return holePage(aimFor(i))
+  },
+  r: 0.2,
+  y: 0.12,
+}))
 
 /** Running story timelines; killed when the page turns away (their callbacks too). */
 let timelines: gsap.core.Timeline[] = []
@@ -481,8 +514,12 @@ function ToolsDirector() {
       timelines = []
       gsap.killTweensOf(robo)
       gsap.killTweensOf(car)
+      gsap.killTweensOf(mount)
       Object.assign(robo, { power: 0, battery: false, talk: 0 })
-      Object.assign(car, { wheels: 0, roll: 0 })
+      Object.assign(car, { flag: 0, roll: 0 })
+      mount[0] = mount[1] = 0
+      plan.placed = [-1, -1]
+      plan.taken = [false, false]
     } else if (!away) live.current = true
   })
   return null
@@ -505,19 +542,70 @@ function powerUp() {
     }, 3.3)
 }
 
-function wheelsOn() {
-  beat('tools', 2) // wheels are on: the "box car zoomed off" text starts writing
+/** the drill has made both holes: now the loose wheels wake up */
+function holesDrilled() {
+  beat('tools', 2) // the "now pop on the wheels" text starts writing
+  bus.emit('sfx', 'sparkle')
+  bus.emit('milo', 'point')
+}
+
+/** wheel i was dropped on the box: it clicks onto the hole it was aiming for */
+function wheelOn(i: number) {
+  // `held` is already false here, so use the hole that was nearest the finger
+  const h = plan.taken[plan.aim] ? 1 - plan.aim : plan.aim
+  plan.placed[i] = h
+  plan.taken[h] = true
   bus.emit('sfx', 'snap')
-  story()
-    .to(car, { wheels: 1, duration: 0.7, ease: 'power1.out' }, 0.1)
-    .add(() => bus.emit('sfx', 'boing'), 0.15)
-    .add(() => bus.emit('sfx', 'sparkle'), 0.5)
-    .add(() => bus.emit('milo', 'jump'), 0.3)
+  const both = plan.taken[0] && plan.taken[1]
+  const tl = story()
+  tl.to(mount, { [h]: 1, duration: 0.45, ease: 'none' }, 0.25).add(() => bus.emit('sfx', 'boing'), 0.3)
+  if (!both) return
+  beat('tools', 3) // both wheels are on: the "box car zoomed off" text starts writing
+  tl.to(car, { flag: 1, duration: 0.7, ease: 'power1.out' }, 0.6)
+    .add(() => bus.emit('sfx', 'sparkle'), 0.8)
+    .add(() => bus.emit('milo', 'jump'), 0.7)
     .add(() => {
       car.roll = 1
       bus.emit('sfx', 'zoom')
       bus.emit('pull', 'boxcar')
-    }, 1.6)
+    }, 2.2)
+}
+
+/**
+ * Works out which hole is nearest the finger while a wheel is carried (by screen
+ * position), so either wheel can go on either hole.
+ */
+function WheelAim() {
+  const { baseY } = useSpread()
+  const { camera, gl } = useThree()
+  const g = useRef<THREE.Group>(null!)
+  const px = useRef(0)
+  const v = useMemo(() => new THREE.Vector3(), [])
+  useEffect(() => {
+    const move = (e: PointerEvent) => (px.current = e.clientX)
+    window.addEventListener('pointermove', move)
+    return () => window.removeEventListener('pointermove', move)
+  }, [])
+  useFrame(() => {
+    if (!wheelStates[0].held && !wheelStates[1].held) return
+    const rect = gl.domElement.getBoundingClientRect()
+    let best = plan.aim
+    let bd = Infinity
+    for (const h of [0, 1]) {
+      if (plan.taken[h]) continue
+      const [x, z] = holePage(h)
+      v.set(x - BOX_AT[0], 0, z - BOX_AT[1])
+      g.current.localToWorld(v)
+      v.project(camera)
+      const d = Math.abs(rect.left + ((v.x + 1) / 2) * rect.width - px.current)
+      if (d < bd) {
+        bd = d
+        best = h
+      }
+    }
+    plan.aim = best
+  })
+  return <group ref={g} position={[BOX_AT[0], baseY, BOX_AT[1]]} />
 }
 
 /** Sawdust spraying off the box while the drill is working. */
@@ -725,7 +813,7 @@ function BoxCar() {
               size={[150 * BK, 150 * BK]}
               pivot={[px, py, 0.006]}
               animate={(g, t) => {
-                const k = ease(car.wheels * 1.4 - i * 0.4)
+                const k = ease(mount[i])
                 g.visible = k > 0.01
                 g.scale.setScalar(Math.max(0.001, k))
                 g.rotation.z = -t * 14 * car.roll - (1 - k) * 3
@@ -740,13 +828,51 @@ function BoxCar() {
         pivot={[fx, fy - 0.004, -0.004]}
         offset={[50 * BK, 115 * BK]}
         animate={(g, t) => {
-          const k = ease(car.wheels * 1.3 - 0.35)
+          const k = ease(car.flag)
           g.visible = k > 0.01
           g.scale.setScalar(Math.max(0.001, k))
           g.rotation.z = Math.sin(t * 7) * 0.08 * car.roll
         }}
       />
     </PopCard>
+  )
+}
+
+/**
+ * The two loose wheels. Inert until the holes are drilled, lit up once the story
+ * says "wheels". Re-renders when a hole fills so each wheel's ring sits on a free hole.
+ */
+function LooseWheels() {
+  const [, force] = useState(0)
+  const key = useRef(0)
+  useFrame(() => {
+    const k = (plan.taken[0] ? 1 : 0) + (plan.taken[1] ? 2 : 0)
+    if (k !== key.current) {
+      key.current = k
+      force((n) => n + 1)
+    }
+  })
+  return (
+    <>
+      {[0, 1].map((i) => (
+        <DragPiece
+          key={i}
+          art={wheel}
+          size={[0.22, 0.22]}
+          at={WHEEL_AT[i]}
+          delay={0.38 + i * 0.04}
+          flat
+          idle="none"
+          target={wheelTargets[i]}
+          consume
+          state={wheelStates[i]}
+          color="#ffd84a"
+          disabled={() => !drillState.done}
+          hint={() => heard('tools', 'wheels')}
+          onDone={() => wheelOn(i)}
+        />
+      ))}
+    </>
   )
 }
 
@@ -762,6 +888,7 @@ function ToolsPopups() {
       <Robo />
       <BoxCar />
       <Sawdust />
+      <WheelAim />
       {/* front: the things you can pick up */}
       <DragPiece
         art={battery}
@@ -772,13 +899,15 @@ function ToolsPopups() {
         target={{ at: ROBO_AT, r: 0.34, y: 0.4 }}
         consume
         color="#9ff36a"
+        hint={() => heard('tools', 'empty')}
         onDone={powerUp}
       />
-      <WakeGate home={[1.22, 0.72]}>
+      <LooseWheels />
+      <WakeGate home={DRILL_AT}>
         <DragPiece
           art={drill}
           size={[0.44, 0.336]}
-          at={[1.22, 0.72]}
+          at={DRILL_AT}
           delay={0.4}
           rotY={-0.2}
           idle="bob"
@@ -786,7 +915,7 @@ function ToolsPopups() {
           hold={1.6}
           state={drillState}
           color="#ffd84a"
-          onDone={wheelsOn}
+          onDone={holesDrilled}
         />
       </WakeGate>
       <PopCard art={sparkle()} size={[0.12, 0.12]} at={[0.36, 0.6]} y={0.16} delay={0.45} hinge="spring" idle="float" emissive={0.8} tap="spin" />
@@ -1024,12 +1153,13 @@ export const toolsSpread: SpreadDef = {
   palette: palettes.workshop,
   outfit: 'tools',
   heading: 'Fix-it Milo',
-  beats: 2,
+  beats: 3,
   textCard: { x: 0, y: 0, w: 0.8 },
   text: [
     '*Whoosh!* Milo landed in his *workshop!* Robo the robot was fast asleep. His battery was *empty*.',
     { after: 1, text: '*Click!* In went the battery. *Beep boop!* Robo woke up and waved.' },
-    { after: 2, text: 'Then Milo drilled wheels on a box. *Vroom!* Off zoomed the box car!' },
+    { after: 2, text: '*Bzzz!* Milo drilled two holes in a box. Now pop on the *wheels!*' },
+    { after: 3, text: '*Snap, snap!* *Vroom!* Off zoomed the box car!' },
   ],
   spreadArt: toolsSpreadArt,
   Popups: ToolsPopups,
