@@ -254,7 +254,7 @@ once the card has written the words that ask for them.
 | building | `gaps` | coloured ghosts + arrows, block highlights |
 | firefighter | `hose` | nozzle highlights |
 | superhero | `fly` | pull-tab highlights |
-| home | `out` | pull-tab highlights |
+| home | `out` | floor-lamp glow + show-me hand |
 
 ## 6. Progress and gating (`src/progress.ts`)
 

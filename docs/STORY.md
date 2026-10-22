@@ -212,14 +212,17 @@ has finished writing.
   - On the walls: shelves of books and toys (a little Robo, a wooden truck),
     a row of Milo's drawings of the adventures, a star mobile and a moon
     window.
-  - Around the room: a "TOYS" chest, a bed, a lamp and a teddy bear.
+  - Around the room: a "TOYS" chest, a bed, a big floor lamp and a teddy bear.
   - In the middle: Mom and Dad kneeling and hugging pyjama Milo.
 - **World:** the front yard of the house at night, with fireflies and a black
   cat.
-- **Interaction:** the **"Lights out" pull tab** (or tap the lamp).
-  - The room goes dark, glow-stars and the moon come out, the mobile's stars
-    float out over the yard, and Milo snoozes (Zzz).
-  - Beat 1 fires on lights-out. Pulling again turns the lights back on.
+- **Interaction:** **tap the big floor lamp** (it glows, with the show-me
+  hand, from "*lights out*?" until it's off). There is no pull tab.
+  - Click! The room goes dark and moonlight shines in through the window: a
+    soft beam and the window's panes on the floor (like the back cover).
+    Glow-stars come out, the mobile's stars float out over the yard, and Milo
+    snoozes (Zzz).
+  - Beat 1 fires on lights-out. Tapping again turns the lamp back on.
 - **Text:**
   > Home at last! Mom and Dad gave Milo the biggest, squeeziest *hug*. Now it was time for bed. Can you turn the *lights out*?
   >

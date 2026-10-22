@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import gsap from 'gsap'
@@ -7,7 +7,7 @@ import { useSvgTexture } from '../../art/useSvgTexture'
 import { clamp01, windowed } from '../../anim/ease'
 import { HUG, MILO_EYES, hugGroup, hugPx, miloEyesClosed, miloEyesOpen } from '../../art/homeFamily'
 import {
-  BED, LAMP, MOBILE, WALL, WINDOW, bed, bedroomWall, glowStarOff, glowStarOn, homeSpreadArt, lamp, lampLit, nightWindow,
+  BED, FLOOR_LAMP, MOBILE, WALL, WINDOW, bed, bedroomWall, floorLamp, floorLampLit, glowStarOff, glowStarOn, homeSpreadArt, moonPanes, nightWindow,
   sleepyStar, slippers, starMobile, teddy, teddyEyesClosed, teddyEyesOpen, toyChest, windowNightOverlay, zzz,
 } from '../../art/homeRoom'
 import {
@@ -15,7 +15,6 @@ import {
   nightTree, skyDecor, smokePuff, streetLamp, townline, windowDark, windowLit,
 } from '../../art/homeWorld'
 import { Part, PopCard } from '../../popup/PopCard'
-import { PullTab } from '../../popup/PullTab'
 import { useSpread } from '../../popup/SpreadContext'
 import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { anim } from '../../state'
@@ -32,9 +31,9 @@ import type { SpreadDef } from '../types'
  *           star mobile · glow-in-the-dark stars · a toy chest (toys put away)
  *   middle: Milo's bed · Mom and Dad hugging Milo (the biggest, squeeziest hug)
  *   front:  teddy · slippers · the little bedside lamp
- * Pull the "Lights out" tab (or tap the lamp): the room dims, the lamp goes out,
- * the moon and stars come out, the mobile's stars drift off into the world,
- * Milo's eyes close and a sleepy Zzz floats up. Do it again for the light.
+ * Tap the big floor lamp: the room dims, the lamp goes out, moonlight shines in
+ * through the window onto the floor, the stars come out, the mobile's stars drift off into the world,
+ * Milo's eyes close and a sleepy Zzz floats up. Tap again for the light.
  */
 
 /* ------------------------------------------------- spread behaviour -- */
@@ -56,6 +55,7 @@ function toggleLights(index: number) {
   night.target = off ? 1 : 0
   gsap.killTweensOf(night)
   gsap.to(night, { dark: night.target, duration: off ? 1.7 : 0.9, ease: 'power2.inOut' })
+  bus.emit('sfx', 'snap') // the lamp's click
   if (off) {
     beat('home', 1) // lights out: the bedtime ending can be written
     bus.emit('sfx', 'sparkle')
@@ -194,7 +194,7 @@ function NightFx() {
     veilMat.opacity = d * 0.36 * open
     // the whole scene dims with the room (world, sky, book light) while we're on this page
     // (only while fully open: once the page starts folding away, the turn owns the dimmer)
-    if (anim.raise[index].v > 0.995) anim.lights.dark = d * 0.65
+    if (anim.raise[index].v > 0.995) anim.lights.dark = d * 0.8
     veil.current.visible = veilMat.opacity > 0.005
     lampLight.current.intensity = open * (1 - d) * (1.5 + Math.sin(s.clock.elapsedTime * 2.1) * 0.08)
     moonLight.current.intensity = open * d * 1.7
@@ -206,8 +206,7 @@ function NightFx() {
         <planeGeometry args={[3.2, 2.2]} />
       </mesh>
       <Glow position={[1.15, baseY + 0.005, 0.4]} size={[2.2, 1.5]} color="#ffb860" level={() => open() * lit() * 0.55} flat />
-      <Glow position={[0.95, baseY + 0.005, -0.1]} size={[1.5, 1.0]} color="#9fb6ff" level={() => open() * dark() * 0.5} flat />
-      <pointLight ref={lampLight} position={[1.45, baseY + 0.45, 0.3]} color="#ffc878" distance={2.6} decay={1.4} />
+      <pointLight ref={lampLight} position={[LAMP_AT[0], baseY + 1.05, LAMP_AT[1] + 0.08]} color="#ffc878" distance={2.6} decay={1.4} />
       <pointLight ref={moonLight} position={[0.8, baseY + 1.0, -0.4]} color="#8fa8ff" distance={3.4} decay={1.3} />
     </>
   )
@@ -235,7 +234,7 @@ const hugPivot = (x: number, y: number): [number, number, number] => {
   const [px, py] = hugPx(x, y)
   return [(px - HUG.w / 2) * HK, (HUG.h - py) * HK, 0]
 }
-const LAMP_AT: [number, number] = [1.45, 0.3]
+const LAMP_AT: [number, number] = [1.3, 0.4]
 const TEDDY = { w: 0.3, h: 0.386 }
 const TK = TEDDY.w / 420
 
@@ -259,7 +258,7 @@ const DIM_SPECS = [
   { art: hugGroup(), px: 2048 },
   { art: teddy, px: 768 },
   { art: slippers, px: 768 },
-  { art: lamp, px: 768 },
+  { art: floorLamp, px: 1024 },
   { art: toyChest, px: 768 },
   { art: starMobile, px: 768 },
 ]
@@ -332,7 +331,7 @@ function Teddy() {
   const eyeSize: [number, number] = [160 * TK, 50 * TK]
   const pivot: [number, number, number] = [0, (540 - 165) * TK, 0]
   return (
-    <PopCard art={teddy} size={[TEDDY.w, TEDDY.h]} at={[1.2, 0.66]} delay={0.38} rotY={-0.2} px={768} tap="jump" idle="bob" idleAmp={0.4} onTap={() => bus.emit('sfx', 'giggle')}>
+    <PopCard art={teddy} size={[TEDDY.w, TEDDY.h]} at={[0.98, 0.76]} delay={0.38} rotY={-0.2} px={768} tap="jump" idle="bob" idleAmp={0.4} onTap={() => bus.emit('sfx', 'giggle')}>
       <Part
         art={teddyEyesOpen}
         size={eyeSize}
@@ -353,24 +352,137 @@ function Teddy() {
   )
 }
 
+/** The big floor lamp is the light switch: tap it for lights out (and again for the light). */
 function Lamp() {
   const { index } = useSpread()
   const open = () => windowed(anim.raise[index].v, 0.4, 0.3)
-  const k = LAMP.w / 360
+  const shadeY = (1000 - 200) * (FLOOR_LAMP.h / 1000)
   return (
     <PopCard
-      art={lamp}
-      size={[LAMP.w, LAMP.h]}
+      art={floorLamp}
+      size={[FLOOR_LAMP.w, FLOOR_LAMP.h]}
       at={LAMP_AT}
       delay={0.4}
       rotY={-0.25}
-      px={768}
+      px={1024}
       tap="wiggle"
+      hint={() => heard('home', 'out') && night.target === 0}
       onTap={() => bus.emit('pull', 'lights')}
     >
-      <Fade art={lampLit} size={[LAMP.w, LAMP.h]} pivot={[0, LAMP.h / 2, 0]} px={768} level={() => open() * lit()} />
-      <Glow position={[0, (560 - 200) * k, -0.004]} size={[1.0, 1.0]} color="#ffcf80" level={() => open() * lit() * 0.6} />
+      <Fade art={floorLampLit} size={[FLOOR_LAMP.w, FLOOR_LAMP.h]} pivot={[0, FLOOR_LAMP.h / 2, 0]} px={1024} level={() => open() * lit()} />
+      <Glow position={[0, shadeY, -0.004]} size={[1.2, 1.2]} color="#ffcf80" level={() => open() * lit() * 0.6} />
     </PopCard>
+  )
+}
+
+/* ---- moonlight through the window: a soft beam, the panes on the floor, a cool spotlight ---- */
+
+// the window's glass on the wall (book space): along the wall from the window's centre, and its height
+const WIN_C: [number, number] = (() => {
+  const w = onWall(0.8, 0.5, 0.03)
+  return w.at
+})()
+const WALL_DIR: [number, number] = [Math.cos(FOLD), Math.sin(FOLD)]
+const GLASS = { half: 0.234, y0: 0.5 + 0.162, y1: 0.5 + 0.67 }
+// the moon is up and to the right, behind the wall: light falls down, to the left and toward us
+const MOON_DIR = { dx: -0.5, dz: 1.1 } // per unit of drop
+const glassAt = (side: -1 | 1, y: number): [number, number, number] => [
+  WIN_C[0] + side * GLASS.half * WALL_DIR[0],
+  y,
+  WIN_C[1] + side * GLASS.half * WALL_DIR[1],
+]
+const onFloor = ([x, y, z]: [number, number, number]): [number, number, number] => [x + MOON_DIR.dx * y, 0.006, z + MOON_DIR.dz * y]
+
+function MoonShine() {
+  const { index, baseY } = useSpread()
+  const tex = useSvgTexture(moonPanes, 512)
+  const beam = useRef<THREE.Mesh>(null!)
+  const pool = useRef<THREE.Mesh>(null!)
+  const spot = useRef<THREE.SpotLight>(null!)
+  const beamMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        vertexColors: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false,
+      }),
+    [],
+  )
+  const poolMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        map: tex, color: '#c9d8ff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, toneMapped: false,
+        polygonOffset: true, polygonOffsetFactor: -3,
+      }),
+    [tex],
+  )
+  // the glass corners: top-left, top-right, bottom-right, bottom-left
+  const corners = useMemo(() => [glassAt(-1, GLASS.y1), glassAt(1, GLASS.y1), glassAt(1, GLASS.y0), glassAt(-1, GLASS.y0)], [])
+  const beamGeo = useMemo(() => {
+    const pos: number[] = []
+    const col: number[] = []
+    corners.forEach((c) => {
+      pos.push(...c)
+      col.push(0.85, 0.92, 1)
+    })
+    corners.forEach((c) => {
+      pos.push(...onFloor(c))
+      col.push(0.12, 0.16, 0.26)
+    })
+    const idx: number[] = []
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4
+      idx.push(i, j, 4 + j, i, 4 + j, 4 + i)
+    }
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+    g.setIndex(idx)
+    return g
+  }, [corners])
+  const poolGeo = useMemo(() => {
+    // bottom-left, bottom-right, top-right, top-left of the window, as they land on the floor
+    const c = [onFloor(corners[3]), onFloor(corners[2]), onFloor(corners[1]), onFloor(corners[0])]
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(c.flat(), 3))
+    g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2))
+    g.setIndex([0, 1, 2, 0, 2, 3])
+    return g
+  }, [corners])
+  const target = useMemo(() => new THREE.Object3D(), [])
+  useEffect(
+    () => () => {
+      beamMat.dispose()
+      poolMat.dispose()
+      beamGeo.dispose()
+      poolGeo.dispose()
+    },
+    [beamMat, poolMat, beamGeo, poolGeo],
+  )
+  useFrame((s) => {
+    const m = windowed(anim.raise[index].v, 0.3, 0.3) * night.dark
+    const flick = 1 + Math.sin(s.clock.elapsedTime * 0.8) * 0.04
+    beamMat.opacity = 0.11 * m * flick
+    poolMat.opacity = 0.75 * m * flick
+    beam.current.visible = pool.current.visible = m > 0.003
+    spot.current.intensity = 5 * m
+  })
+  const poolMid = onFloor(glassAt(-1, (GLASS.y0 + GLASS.y1) / 2))
+  return (
+    <group position={[0, baseY, 0]}>
+      <mesh ref={beam} geometry={beamGeo} material={beamMat} renderOrder={6} />
+      <mesh ref={pool} geometry={poolGeo} material={poolMat} renderOrder={3} />
+      <primitive object={target} position={[poolMid[0] + 0.25, 0, poolMid[2]]} />
+      <spotLight
+        ref={spot}
+        position={[WIN_C[0] + 1.0, 2.2, WIN_C[1] - 2.2]}
+        target={target}
+        color="#a9c1ff"
+        intensity={0}
+        angle={0.5}
+        penumbra={1}
+        distance={5}
+        decay={1.2}
+      />
+    </group>
   )
 }
 
@@ -393,36 +505,13 @@ function GlowStar({ at, y, rotY, s, i }: { at: [number, number]; y: number; rotY
   )
 }
 
-function LightsTab() {
-  const [off, setOff] = useState(false)
-  const last = useRef(false)
-  useFrame(() => {
-    const now = night.target === 1
-    if (now !== last.current) {
-      last.current = now
-      setOff(now)
-    }
-  })
-  return (
-    <PullTab
-      id="lights"
-      label={off ? 'Lights on' : 'Lights out'}
-      sub={off ? 'pull again' : 'pull the tab'}
-      at={[0.52, 1.0]}
-      accent={off ? '#c98a1a' : '#4a4a9a'}
-      color={off ? '#e9a23b' : '#6a6ad0'}
-      delay={0.5}
-      hint={() => heard('home', 'out')}
-    />
-  )
-}
-
 function HomePopups() {
   return (
     <>
       <HomeDirector />
       <Dim specs={DIM_SPECS} />
       <NightFx />
+      <MoonShine />
       {/* back: the wall, the window, the mobile, the toys put away */}
       <PopCard art={bedroomWall} size={[WALL.w, WALL.h]} at={[0, WALL_Z]} vfold={FOLD} delay={0} px={2048} tap="none" />
       <PopCard
@@ -467,7 +556,6 @@ function HomePopups() {
       <Teddy />
       <PopCard art={slippers} size={[0.42, 0.186]} at={[0.62, 0.9]} delay={0.36} rotY={0.1} px={768} tap="jump" />
       <Lamp />
-      <LightsTab />
     </>
   )
 }

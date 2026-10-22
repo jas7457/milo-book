@@ -490,6 +490,61 @@ export const lampLit = svgDoc(
   { grain: 0 },
 )
 
+export const FLOOR_LAMP = { w: 0.6, h: 1.36 } // art 440 × 1000
+
+const floorShadePath = 'M128 64 L 312 64 L 404 330 L 36 330 Z'
+
+/** Milo's big floor lamp: a tall wooden pole, a round base, a pull chain, a starry shade (440×1000). Unlit. */
+export const floorLamp = svgDoc(
+  440,
+  1000,
+  `<!-- round base -->
+   <ellipse cx="220" cy="968" rx="124" ry="24" fill="#2b3f8a" stroke="${INK}" stroke-width="5"/>
+   <path d="M110 960 Q 220 900 330 960 Q 220 988 110 960 Z" fill="#5a7fd8" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+   <path d="M140 948 Q 180 926 220 922" stroke="#9db6f4" stroke-width="7" fill="none" stroke-linecap="round"/>
+   <path d="${starPath(270, 944, 10)}" fill="#ffe27a"/><path d="${starPath(176, 952, 7)}" fill="#ffe27a"/>
+   <!-- wooden pole with a brass knuckle -->
+   <rect x="204" y="330" width="32" height="606" rx="10" fill="#a8683c" stroke="${INK}" stroke-width="5"/>
+   <rect x="211" y="340" width="8" height="586" rx="4" fill="#d9a05a" opacity=".8"/>
+   <rect x="194" y="610" width="52" height="30" rx="10" fill="#e8c36a" stroke="${INK}" stroke-width="4"/>
+   <rect x="194" y="336" width="52" height="34" rx="8" fill="#e8c36a" stroke="${INK}" stroke-width="4"/>
+   <!-- shade (dim) with little cut-out stars -->
+   <path d="${floorShadePath}" fill="#cfa66c" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>
+   ${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M${146 + i * 30} 68 L ${70 + i * 60} 326" stroke="#b58a50" stroke-width="3.5"/>`).join('')}
+   ${[[150, 150, 14], [290, 140, 12], [220, 230, 16], [110, 270, 11], [330, 268, 12]].map(([x, y, r]) => `<path d="${starPath(x, y, r)}" fill="#a07a44"/>`).join('')}
+   <rect x="22" y="318" width="396" height="26" rx="13" fill="#c9954a" stroke="${INK}" stroke-width="5"/>
+   <rect x="118" y="52" width="204" height="20" rx="10" fill="#c9954a" stroke="${INK}" stroke-width="5"/>
+   <!-- pull chain -->
+   ${Array.from({ length: 7 }, (_, i) => `<circle cx="318" cy="${352 + i * 13}" r="4.5" fill="#e8c36a" stroke="${INK}" stroke-width="2"/>`).join('')}
+   <circle cx="318" cy="454" r="11" fill="#e8c36a" stroke="${INK}" stroke-width="4"/>`,
+  { cut: 5 },
+)
+
+/** The floor lamp's shade, lit (same box as the lamp): faded over the dim one. */
+export const floorLampLit = svgDoc(
+  440,
+  1000,
+  `<linearGradient id="flt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe9a6"/><stop offset=".5" stop-color="#fffbe6"/><stop offset="1" stop-color="#ffe19a"/></linearGradient>
+   <path d="${floorShadePath}" fill="url(#flt)" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>
+   ${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M${146 + i * 30} 68 L ${70 + i * 60} 326" stroke="#f4d27a" stroke-width="3.5"/>`).join('')}
+   ${[[150, 150, 14], [290, 140, 12], [220, 230, 16], [110, 270, 11], [330, 268, 12]].map(([x, y, r]) => `<path d="${starPath(x, y, r)}" fill="#ffd04a"/>`).join('')}
+   <rect x="22" y="318" width="396" height="26" rx="13" fill="#ffd27a" stroke="${INK}" stroke-width="5"/>
+   <ellipse cx="220" cy="334" rx="120" ry="12" fill="#fffbe6"/>`,
+  { grain: 0 },
+)
+
+/** Moonlight on the floor: the window's four panes, soft-edged, white (330×300). */
+export const moonPanes = svgDoc(
+  330,
+  300,
+  `<filter id="mpb" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="6"/></filter>
+   <g filter="url(#mpb)" fill="#fff">
+     <rect x="14" y="14" width="143" height="127" rx="4"/><rect x="173" y="14" width="143" height="127" rx="4"/>
+     <rect x="14" y="157" width="143" height="129" rx="4"/><rect x="173" y="157" width="143" height="129" rx="4"/>
+   </g>`,
+  { grain: 0 },
+)
+
 /** A wooden toy chest — the toys are all put away (640×470). */
 export const toyChest = svgDoc(
   640,
