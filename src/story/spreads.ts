@@ -8,6 +8,7 @@ import { buildSpread, BridgeWorld } from './pages/building'
 import { fireSpread, FireWorld } from './pages/firefighter'
 import { heroSpread, SkyWorld } from './pages/superhero'
 import { homeSpread, BedroomWorld } from './pages/home'
+import { backSpread, HouseWorld } from './pages/backcover'
 
 /**
  * The book, in order. Spread 0 is the closed cover.
@@ -23,6 +24,7 @@ export const spreads: SpreadDef[] = [
   fireSpread,
   heroSpread,
   homeSpread,
+  backSpread,
 ]
 
 export const worlds: Record<string, FC> = {
@@ -33,6 +35,7 @@ export const worlds: Record<string, FC> = {
   firetown: FireWorld,
   skyline: SkyWorld,
   bedroom: BedroomWorld,
+  house: HouseWorld,
 }
 
 export const cover = {

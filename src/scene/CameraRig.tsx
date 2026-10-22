@@ -15,6 +15,8 @@ export function CameraRig() {
   const pos = useMemo(() => new THREE.Vector3(), [])
   const cur = useMemo(() => ({ look: new THREE.Vector3(0.8, 0.2, 0), pos: new THREE.Vector3(0.8, 6, 7), px: 0, py: 0 }), [])
   const v = useMemo(() => new THREE.Vector3(), [])
+  const backLook = useMemo(() => new THREE.Vector3(), [])
+  const backPos = useMemo(() => new THREE.Vector3(), [])
 
   useFrame((state, dt) => {
     const o = anim.cam.open
@@ -28,6 +30,18 @@ export function CameraRig() {
     look.set(0.8 + (-0.6 - 0.8) * o, 0.6 + 0.12 * o, -0.1 - 0.1 * o)
     const elev = 0.5 - 0.06 * o // radians above horizontal
     pos.set(look.x, look.y + Math.sin(elev) * dist, look.z + Math.cos(elev) * dist)
+    // the ending (back cover): pull back and look across the room so the
+    // Easter eggs on the walls and the sofa are in view, the book low in front
+    const k = anim.back.slide
+    if (k > 0) {
+      const e = k * k * (3 - 2 * k)
+      const far = 17.5 * Math.max(1, 1.6 / aspect)
+      const elev = 0.2
+      backLook.set(0.4, 1.75, -5)
+      backPos.set(0.4, 1.75 + Math.sin(elev) * far, -5 + Math.cos(elev) * far)
+      look.lerp(backLook, e)
+      pos.lerp(backPos, e)
+    }
     // dive in during page turns
     pos.lerp(look, anim.cam.push * 0.12)
     pos.y += anim.cam.push * 0.25
