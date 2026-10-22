@@ -294,3 +294,48 @@ export const toyTruck = svgDoc(
    ${[92, 330, 410].map((x) => `<circle cx="${x}" cy="222" r="34" fill="#2f3036" stroke="${INK}" stroke-width="6"/><circle cx="${x}" cy="222" r="17" fill="#cfd3d8" stroke="${INK}" stroke-width="4"/><circle cx="${x}" cy="222" r="6" fill="#3d7ad6"/>`).join('')}`,
   { cut: 5 },
 )
+
+/* ======================================================== ACTION FIGURES == */
+
+/**
+ * A little round plastic display stand (300×110) for a toy Milo. The feet go on
+ * the middle of the top disc: `STAND.foot` is how far up the art that is (0…1).
+ */
+export const STAND = { w: 300, h: 110, foot: 0.62 }
+const standCache = new Map<string, string>()
+export function figureStand(accent: string) {
+  let s = standCache.get(accent)
+  if (s) return s
+  s = svgDoc(
+    STAND.w,
+    STAND.h,
+    `<linearGradient id="st" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2c313b"/><stop offset=".35" stop-color="#5a6272"/><stop offset=".55" stop-color="#4a5160"/><stop offset="1" stop-color="#262a33"/></linearGradient>
+     <!-- rim -->
+     <path d="M10 42 L 10 62 Q 10 100 150 100 Q 290 100 290 62 L 290 42 Z" fill="url(#st)" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+     <path d="M26 74 Q 150 108 274 74" stroke="${accent}" stroke-width="9" fill="none" stroke-linecap="round"/>
+     <path d="M40 58 Q 80 66 120 62" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".45"/>
+     <!-- top disc -->
+     <ellipse cx="150" cy="42" rx="140" ry="30" fill="#6b7384" stroke="${INK}" stroke-width="5"/>
+     <ellipse cx="150" cy="42" rx="112" ry="22" fill="#838c9e"/>
+     <ellipse cx="150" cy="42" rx="112" ry="22" fill="none" stroke="${accent}" stroke-width="4" opacity=".9"/>
+     <!-- shine -->
+     <path d="M52 34 Q 90 20 140 20" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" opacity=".6"/>
+     <path d="M226 54 Q 246 48 256 40" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".35"/>
+     <!-- little gold star plate -->
+     <path d="${starPath(150, 85, 11, 5)}" fill="${GOLD}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`,
+    { cut: 4 },
+  )
+  standCache.set(accent, s)
+  return s
+}
+
+/** a little brass hook that Super Milo's string hangs from (60×90) */
+export const wallHook = svgDoc(
+  60,
+  90,
+  `<circle cx="30" cy="22" r="18" fill="#d9a441" stroke="${INK}" stroke-width="4"/>
+   <circle cx="30" cy="22" r="10" fill="#f0c466"/><circle cx="26" cy="18" r="4" fill="#fff" opacity=".7"/>
+   <path d="M30 40 L 30 62 Q 30 80 44 80 Q 54 80 54 68" stroke="${INK}" stroke-width="12" fill="none" stroke-linecap="round"/>
+   <path d="M30 40 L 30 62 Q 30 80 44 80 Q 54 80 54 68" stroke="#e8b84e" stroke-width="6" fill="none" stroke-linecap="round"/>`,
+  { grain: 0 },
+)

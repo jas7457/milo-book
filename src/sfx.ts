@@ -106,6 +106,14 @@ const sounds: Record<string, () => void> = {
     ;[880, 660, 990, 740, 1180].forEach((f, i) => tone(f, f * (i % 2 ? 0.9 : 1.1), 0.08, 'square', 0.06, i * 0.09))
   },
   snap: () => tone(1400, 500, 0.06, 'square', 0.12),
+  /** a wooden block knocking on the floor */
+  clatter: () => {
+    const f = 520 + Math.random() * 260
+    tone(f, f * 0.55, 0.07, 'triangle', 0.22)
+    tone(f * 1.9, f, 0.04, 'square', 0.04, 0.005)
+  },
+  /** something soft and heavy landing (a scoop of dirt) */
+  thud: () => tone(140, 55, 0.22, 'sine', 0.35),
   boing: () => tone(220, 660, 0.35, 'sine', 0.3),
   zoom: () => {
     tone(300, 1200, 0.5, 'sawtooth', 0.05)
