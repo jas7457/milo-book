@@ -159,13 +159,14 @@ function writingMaterial(art: StoryCardArt, times: THREE.Texture) {
 
 /* ---------------------------------------------------------------- pencil -- */
 
-const PEN = { w: 220, h: 300, tipX: 16, tipY: 290 }
+// room on every side for the eraser's outline and die-cut edge (220 px wide clipped the eraser)
+const PEN = { w: 256, h: 316, tipX: 16, tipY: 302 }
 const pencilArt = svgDoc(
   PEN.w,
   PEN.h,
   `<g stroke="${INK}" stroke-width="7" stroke-linejoin="round">
      <!-- body, running from the tip (bottom-left) up to the eraser (top-right) -->
-     <g transform="translate(16 290) rotate(-52)">
+     <g transform="translate(${PEN.tipX} ${PEN.tipY}) rotate(-52)">
        <path d="M0 0 L46 -17 L46 17 Z" fill="#f2c890"/>
        <path d="M0 0 L16 -6 L16 6 Z" fill="#3a3330" stroke-width="5"/>
        <rect x="46" y="-17" width="230" height="34" fill="#ffc533"/>
@@ -178,7 +179,7 @@ const pencilArt = svgDoc(
   { cut: 5, grain: 0.6 },
 )
 /** pencil size on the card (world units) */
-const PEN_H = 0.27
+const PEN_H = PEN.h * 0.0009
 const PEN_W = (PEN_H * PEN.w) / PEN.h
 
 function Pencil({ api }: { api: { pos: THREE.Vector3; show: number } }) {
