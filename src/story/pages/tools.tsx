@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import gsap from 'gsap'
@@ -12,6 +12,7 @@ import { useSpread } from '../../popup/SpreadContext'
 import { anim } from '../../state'
 import { clamp01, easeOutBack } from '../../anim/ease'
 import { bus } from '../../bus'
+import { beat } from '../../progress'
 import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
@@ -342,11 +343,12 @@ const Z = (x: number, y: number, s: number) =>
    <path d="M${x} ${y} l ${s} 0 l ${-s} ${s} l ${s} 0" stroke="#fff" stroke-width="${s * 0.2}" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`
 const zzz = svgDoc(170, 170, `${Z(10, 110, 34)}${Z(62, 58, 44)}${Z(116, 8, 40)}`)
 
+// generous padding all round; the text is fitted to the bubble with textLength so it can't spill out
 const beepBubble = svgDoc(
-  330,
-  170,
-  `<path d="M40 20 L 300 20 Q 320 20 320 40 L 320 110 Q 320 130 300 130 L 90 130 L 40 164 L 56 130 L 40 130 Q 20 130 20 110 L 20 40 Q 20 20 40 20 Z" fill="#fff" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>
-   <text x="170" y="96" text-anchor="middle" font-family="'Arial Rounded MT Bold', 'Arial Black', Arial, sans-serif" font-weight="900" font-size="50" fill="#2bb6d8">BEEP BOOP!</text>`,
+  400,
+  200,
+  `<path d="M56 24 L 344 24 Q 372 24 372 52 L 372 122 Q 372 150 344 150 L 120 150 L 66 188 L 84 150 L 56 150 Q 28 150 28 122 L 28 52 Q 28 24 56 24 Z" fill="#fff" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>
+   <text x="200" y="105" text-anchor="middle" textLength="290" lengthAdjust="spacingAndGlyphs" font-family="'Arial Rounded MT Bold', 'Arial Black', Arial, sans-serif" font-weight="900" font-size="48" fill="#2bb6d8">BEEP BOOP!</text>`,
 )
 
 /* ------------------------------------------------- the cardboard box -- */
@@ -454,7 +456,9 @@ const robo = { power: 0, battery: false, talk: 0 }
 const car = { wheels: 0, roll: 0 }
 const drillState: DragState = { progress: 0, over: false, done: false, held: false }
 
-const ROBO_AT: [number, number] = [-0.62, -0.28]
+// Robo stands up at the back of the left page, to the right of the story card
+// (card spans x -1.56…-0.36), so his whole body and chest slot are in view.
+const ROBO_AT: [number, number] = [-0.08, -0.55]
 const BOX_AT: [number, number] = [0.66, 0.18]
 
 /** Running story timelines; killed when the page turns away (their callbacks too). */
@@ -486,6 +490,7 @@ function ToolsDirector() {
 
 function powerUp() {
   robo.battery = true
+  beat('tools', 1) // the battery is in: Robo's "woke up" text starts writing
   bus.emit('sfx', 'snap')
   story()
     .add(() => bus.emit('sfx', 'powerup'), 0.15)
@@ -501,6 +506,7 @@ function powerUp() {
 }
 
 function wheelsOn() {
+  beat('tools', 2) // wheels are on: the "box car zoomed off" text starts writing
   bus.emit('sfx', 'snap')
   story()
     .to(car, { wheels: 1, duration: 0.7, ease: 'power1.out' }, 0.1)
@@ -562,6 +568,27 @@ function Sawdust() {
   )
 }
 
+/**
+ * Keeps its children (the drill) off the page until Robo has woken up, then pops
+ * them in around their home spot. This makes the two jobs happen in story order
+ * (battery first, then the box car), so the text for each can follow it.
+ */
+function WakeGate({ home, children }: { home: [number, number]; children: ReactNode }) {
+  const { baseY } = useSpread()
+  const g = useRef<THREE.Group>(null!)
+  useFrame(() => {
+    const k = clamp01((robo.power - 0.85) / 0.15)
+    const s = k > 0 ? easeOutBack(k, 1.8) : 0
+    g.current.visible = s > 0.01
+    g.current.scale.setScalar(Math.max(0.0001, s))
+  })
+  return (
+    <group ref={g} position={[home[0], baseY, home[1]]} visible={false}>
+      <group position={[-home[0], -baseY, -home[1]]}>{children}</group>
+    </group>
+  )
+}
+
 const ease = (x: number) => easeOutBack(clamp01(x), 1.6)
 
 function Robo() {
@@ -584,7 +611,7 @@ function Robo() {
       px={1024}
       tap="wiggle"
       onTap={() => bus.emit('sfx', robo.power > 0.5 ? 'robot' : 'pop')}
-      escape={{ to: [2.7, 0, -4.4], arc: 0.9, scale: 2.8, duration: 2.6, spin: -0.3, on: 'robo' }}
+      escape={{ to: [2.6, 0, -5.4], arc: 0.9, scale: 3.0, duration: 2.6, spin: -0.3, on: 'robo' }}
     >
       <Part
         art={roboArm}
@@ -654,9 +681,9 @@ function Robo() {
       />
       <Part
         art={beepBubble}
-        size={[0.34, 0.175]}
-        pivot={[0.08, 0.68, 0.02]}
-        offset={[0.17, 0.08]}
+        size={[0.5, 0.25]}
+        pivot={[0.1, 0.7, 0.02]}
+        offset={[0.25, 0.12]}
         animate={(g) => {
           g.visible = robo.talk > 0.01
           g.scale.setScalar(Math.max(0.001, robo.talk))
@@ -747,19 +774,21 @@ function ToolsPopups() {
         color="#9ff36a"
         onDone={powerUp}
       />
-      <DragPiece
-        art={drill}
-        size={[0.44, 0.336]}
-        at={[1.22, 0.72]}
-        delay={0.4}
-        rotY={-0.2}
-        idle="bob"
-        target={{ at: BOX_AT, r: 0.3 }}
-        hold={1.6}
-        state={drillState}
-        color="#ffd84a"
-        onDone={wheelsOn}
-      />
+      <WakeGate home={[1.22, 0.72]}>
+        <DragPiece
+          art={drill}
+          size={[0.44, 0.336]}
+          at={[1.22, 0.72]}
+          delay={0.4}
+          rotY={-0.2}
+          idle="bob"
+          target={{ at: BOX_AT, r: 0.3 }}
+          hold={1.6}
+          state={drillState}
+          color="#ffd84a"
+          onDone={wheelsOn}
+        />
+      </WakeGate>
       <PopCard art={sparkle()} size={[0.12, 0.12]} at={[0.36, 0.6]} y={0.16} delay={0.45} hinge="spring" idle="float" emissive={0.8} tap="spin" />
     </>
   )
@@ -995,10 +1024,12 @@ export const toolsSpread: SpreadDef = {
   palette: palettes.workshop,
   outfit: 'tools',
   heading: 'Fix-it Milo',
+  beats: 2,
+  textCard: { x: 0, y: 0, w: 0.8 },
   text: [
-    '*Whoosh!* The stars zoomed off... and Milo landed in his *workshop!*',
-    'Robo the robot was fast asleep. His battery was *empty*.',
-    'Milo grabbed his tools. *"I can fix it!"*',
+    '*Whoosh!* Milo landed in his *workshop!* Robo the robot was fast asleep. His battery was *empty*.',
+    { after: 1, text: '*Click!* In went the battery. *Beep boop!* Robo woke up and waved.' },
+    { after: 2, text: 'Then Milo drilled wheels on a box. *Vroom!* Off zoomed the box car!' },
   ],
   spreadArt: toolsSpreadArt,
   Popups: ToolsPopups,
