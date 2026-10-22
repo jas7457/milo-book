@@ -6,9 +6,11 @@ import { useBook } from '../store'
 import { startIntro } from '../intro'
 
 /** give up waiting for a perfectly smooth start after this long (s) and show the book anyway */
-const LOAD_MAX = 12
-/** frames in a row that must come in under 1/30 s before the loading screen goes */
+const LOAD_MAX = 10
+/** frames in a row without a hitch (under 1/20 s, so a steady 25–30 fps iPad still passes) before the screen goes */
 const SMOOTH_FRAMES = 6
+/** …but don't wait for that longer than this (s) once everything is painted and compiled */
+const SMOOTH_MAX = 1.5
 
 /** Every texture used by a material in the scene (including hidden pieces and shader uniforms). */
 function sceneTextures(scene: THREE.Object3D) {
@@ -45,7 +47,7 @@ export function Prewarm() {
   const clock = useRef(0)
   const uploads = useRef<THREE.Texture[]>([])
   // start-up behind the loading screen: paint → compile → wait for smooth frames → intro
-  const boot = useRef<{ phase: 'paint' | 'compile' | 'smooth' | 'done'; frames: number }>({ phase: 'paint', frames: 0 })
+  const boot = useRef<{ phase: 'paint' | 'compile' | 'smooth' | 'done'; frames: number; since: number }>({ phase: 'paint', frames: 0, since: 0 })
 
   useEffect(() => {
     want.current = clock.current + 0.6 // let the newly mounted spreads make their pieces and cards first
@@ -58,7 +60,10 @@ export function Prewarm() {
       // behind the loading screen there's nothing to protect: paint everything at once
       pumpTextures((t) => gl.initTexture(t), Infinity)
       b.frames++
-      if (clock.current > LOAD_MAX) b.phase = 'smooth'
+      if (clock.current > LOAD_MAX && b.phase !== 'smooth') {
+        b.phase = 'smooth'
+        b.since = clock.current
+      }
       if (b.phase === 'paint' && texturesPending() === 0 && b.frames > 2) {
         b.phase = 'compile'
         want.current = 0
@@ -66,13 +71,15 @@ export function Prewarm() {
         gl.compileAsync(scene, camera)
           .catch(() => {})
           .then(() => {
+            if (b.phase !== 'compile') return // the time cap already moved on
             b.phase = 'smooth'
             b.frames = 0
+            b.since = clock.current
           })
       } else if (b.phase === 'smooth') {
         // the first frames after the uploads can still be slow (the GPU catching up)
-        b.frames = dt < 1 / 30 ? b.frames + 1 : 0
-        if (b.frames >= SMOOTH_FRAMES || clock.current > LOAD_MAX) {
+        b.frames = dt < 1 / 20 ? b.frames + 1 : 0
+        if (b.frames >= SMOOTH_FRAMES || clock.current - b.since > SMOOTH_MAX || clock.current > LOAD_MAX) {
           b.phase = 'done'
           startIntro(useBook.getState().spread)
         }

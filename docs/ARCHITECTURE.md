@@ -374,8 +374,8 @@ On top of that:
   before any script loads; its letters wait for Fredoka. Behind it the scene
   renders fully raised while Prewarm paints every texture with no limit
   (`texturesPending()` counts images still decoding plus the paint queue),
-  uploads them, runs `gl.compileAsync`, then waits for 6 smooth frames
-  (cap: 12 s). Then `startIntro` folds the start spread flat, fades the screen,
+  uploads them, runs `gl.compileAsync`, then waits for 6 frames in a row
+  without a hitch (< 50 ms; at most 1.5 s; overall cap 10 s). Then `startIntro` folds the start spread flat, fades the screen,
   and pops the world and the pop-ups up like the end of a page turn. All the
   start-up freezes (0.5–0.7 s) happen behind the screen.
 - **Prewarm (`scene/Prewarm.tsx`).** After start-up, paints and uploads queued
