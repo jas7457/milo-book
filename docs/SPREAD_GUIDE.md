@@ -1,5 +1,14 @@
 # Building a spread — guide for workers
 
+> **Read [`../AGENTS.md`](../AGENTS.md) first** (rules, commands, testing). How the engine
+> works: [`ARCHITECTURE.md`](ARCHITECTURE.md). The current story and text of every spread:
+> [`STORY.md`](STORY.md).
+>
+> **Status:** all 9 spreads (0–8) are built, gated and committed. The original brief is kept
+> below because it's still the way to build or rework a spread. Where it disagrees with
+> the code, the code wins. Known stale details: the text pace is now ~17 letters/s, and
+> there is also a `scribble` sound.
+
 Project: `/Users/jsonwebdev/src/milo-book` — "Milo to the Rescue!", a code-only (no model files)
 interactive 3D **pop-up book** for Milo (age 5), built with Vite + React 19 + TypeScript +
 three.js / @react-three/fiber + gsap. Every picture is hand-written **SVG** rasterised to textures.
@@ -7,7 +16,7 @@ three.js / @react-three/fiber + gsap. Every picture is hand-written **SVG** rast
 Audience: a 5-year-old on an **iPad (landscape, 1180×820)** or desktop. Big, bright, tappable,
 funny. Very little reading.
 
-## The two finished spreads ARE the quality bar — read them first
+## The finished spreads ARE the quality bar — read them first
 
 - `src/story/pages/reading.tsx` (spread 1, "Story time")
 - `src/story/pages/tools.tsx` (spread 2, "Fix-it Milo") — also the template for drag interactions
@@ -104,7 +113,7 @@ world's presence for custom animated bits. Look at `WorkshopWorld` / `RoomWorld`
 Palette (sky/ground/light colours) comes from `src/story/palettes.ts` — already chosen for you.
 
 **Events** (`src/bus.ts`): `bus.emit('sfx', name)` — available sounds: flip, pop, giggle, sparkle,
-whirr, beep, siren, whoosh, drill, powerup, robot, snap, boing, zoom. `bus.emit('milo', 'wave'|'cheer'|'point'|'jump')`
+whirr, beep, siren, whoosh, drill, powerup, robot, snap, boing, zoom, scribble. `bus.emit('milo', 'wave'|'cheer'|'point'|'jump')`
 makes the Milo paper doll react. `bus.emit('pull', id)` toggles escapes.
 
 ## Story so far (for continuity)
@@ -112,7 +121,8 @@ makes the Milo paper doll react. `bus.emit('pull', id)` toggles escapes.
 1 reading: Milo reads with Mom & Dad, the book GLOWS, stars fly out (pull tab).
 2 tools: Milo lands in his workshop, puts a battery in Robo the robot (drag) → Robo wakes up and
 walks into the world; drills wheels onto a cardboard box car (hold) → it zooms off.
-3 digging → 4 building → 5 firefighter → 6 superhero → 7 home (bedtime).
+3 digging → 4 building → 5 firefighter → 6 superhero → 7 home (bedtime) → 8 back cover.
+The full, current version is in [`STORY.md`](STORY.md).
 Small recurring friends are welcome (Robo the teal robot from tools.tsx can cameo).
 
 ## Final report (keep it short)

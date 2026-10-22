@@ -1,5 +1,15 @@
 # User notes — collected, NOT actioned until user says "go"
 
+How this file works: when the user gives notes, add them here, numbered, with
+the files each one touches, and wait for "go". Once a round is done, mark it
+DONE and leave the history in place. Open items live in the **Backlog** at the
+bottom.
+
+---
+# Round 1 (notes 1–13) — DONE
+
+All 13 notes were actioned, tested in the browser at 1180×820 and committed.
+
 ## 1. Page 1 (reading) — pull tab looks bad  [shared: PullTab.tsx]
 - The purple PULL strip draws ON TOP of the "Let them…" label and cuts its text off
   ("Let them [fly]" / "pull the tab" are hidden). The strip should sit BEHIND the label
@@ -82,3 +92,27 @@
   box car, the glow stars, the truck). Maybe they wave/react when tapped.
 - Keeps total pages within the 10-page limit (this makes 9 spreads incl. cover).
 - Paper-doll Milo on the left in his everyday outfit (or pyjamas), waving goodbye.
+
+---
+# Backlog (not yet actioned — open items, from the lead's review)
+
+Decisions waiting on the user:
+- Building: the 3 blocks start stacked, so they all look red. Spread them out so a child can tell them apart?
+- Optional answers from Jen: Milo's favourite toy, stuffed animal or pet, and favourite colour.
+
+Consistency / polish:
+- Embed Fredoka in `svgDoc`: SVG text rasterised from data URLs can't see page fonts.
+- Page 5 (fire): the palette has a heavy red cast.
+- Page 7 (home): "Lights out" should also dim the global lights and the BookLight. Also check the star halos and the hug figure.
+- Page 4 world: clipping.
+- Back cover: tune the camera for the iPad aspect; the sofa is too dark.
+- StoryCard: `textCard.y` is ignored and the card width is fixed (`CARD_W 1.2`). Make `y`/`w` work to free space on the left page.
+- `DragPiece`: add a `disabled`/`locked` prop. Tools currently uses a local `WakeGate` to make the drill wait for Robo.
+
+Performance / tech:
+- `Milo.tsx` uses bare `svgTexture`, so its textures are never freed. Switch it to `useSvgTexture`.
+- Do a performance and memory pass on a real iPad.
+- Add a loading screen and particles.
+- Fix the favicon 404, and the THREE.Clock deprecation warning.
+- Optional: drag to rotate the camera.
+- Ximena once saw the right page's printed art render blank white under heavy machine load. Not reproduced; watch for it.
