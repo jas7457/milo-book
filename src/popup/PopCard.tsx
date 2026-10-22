@@ -3,7 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { anim } from '../state'
 import { windowed } from '../anim/ease'
-import { paperMaterial, svgTexture } from '../art/texture'
+import { paperMaterial } from '../art/texture'
+import { useSvgTexture } from '../art/useSvgTexture'
 import { useSpread } from './SpreadContext'
 import { Piece, type PieceProps } from './Piece'
 
@@ -46,7 +47,7 @@ export function Part({
   animate?: (g: THREE.Group, t: number) => void
   children?: ReactNode
 }) {
-  const tex = useMemo(() => svgTexture(art, px), [art, px])
+  const tex = useSvgTexture(art, px)
   const mat = useMemo(() => paperMaterial(tex, { emissive }), [tex, emissive])
   const ref = useRef<THREE.Group>(null!)
   useFrame((s) => animate?.(ref.current, s.clock.elapsedTime))

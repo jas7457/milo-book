@@ -88,3 +88,18 @@ function turn(from: number, to: number, done: () => void, setOutfit: (o: Outfit)
 
   tl.call(done, [], T.turnAt + T.turn)
 }
+
+/**
+ * Which spreads are mounted: the settled spread and its neighbours (plus the
+ * target while a turn is running). Everything else is unmounted so its
+ * textures can be freed — important on iPad. The window only slides once a
+ * turn has finished, so new pages are prepared while nothing is animating.
+ */
+let settled = -1
+export function useNearSpreads(): (i: number) => boolean {
+  const spread = useBook((s) => s.spread)
+  const busy = useBook((s) => s.busy)
+  if (!busy || settled < 0) settled = spread
+  const a = settled
+  return (i) => Math.abs(i - a) <= 1 || i === spread
+}

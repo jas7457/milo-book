@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import gsap from 'gsap'
-import { paperMaterial, svgTexture } from '../art/texture'
+import { paperMaterial } from '../art/texture'
+import { useSvgTexture } from '../art/useSvgTexture'
 import { easeInOut, easeOutBack } from '../anim/ease'
 import { bus } from '../bus'
 
@@ -95,7 +96,7 @@ export function Piece(props: PieceProps & { level: () => number }) {
     contact = !flat,
   } = props
   const [w, h] = size
-  const tex = useMemo(() => map ?? svgTexture(art, px), [map, art, px])
+  const tex = useSvgTexture(art, px, map)
   const mat = useMemo(() => paperMaterial(tex, { emissive }), [tex, emissive])
   const outer = useRef<THREE.Group>(null!)
   const hingeG = useRef<THREE.Group>(null!)

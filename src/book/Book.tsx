@@ -1,3 +1,4 @@
+import { useNearSpreads } from '../store'
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -128,6 +129,7 @@ function Blocks() {
 export const BOOK_TILT = 0.3
 
 export function Book() {
+  const near = useNearSpreads()
   return (
     <group rotation={[BOOK_TILT, 0, 0]} position={[0, Math.sin(BOOK_TILT) * (PAGE_H / 2 + 0.07) + 0.01, 0.15]}>
       <Cover />
@@ -136,7 +138,7 @@ export function Book() {
       ))}
       <Blocks />
       {spreads.map((s, i) =>
-        s.Popups ? (
+        s.Popups && near(i) ? (
           <SpreadProvider key={s.id} index={i} baseY={BOARD_T + Math.max(i, N - i) * LEAF_GAP + 0.003}>
             <s.Popups />
             {s.text?.length ? <StoryCard spread={s} /> : null}

@@ -13,7 +13,7 @@ import { setMaxAnisotropy } from '../art/texture'
 export function Scene() {
   return (
     <Canvas
-      shadows={{ type: THREE.PCFSoftShadowMap }}
+      shadows={{ type: THREE.PCFShadowMap }}
       dpr={[1, 2]}
       camera={{ fov: 38, near: 0.1, far: 200, position: [0.8, 4, 6] }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}

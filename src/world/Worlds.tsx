@@ -1,9 +1,14 @@
 import { spreads, worlds } from '../story/spreads'
 import { WorldCtx } from './Cutout'
+import { useNearSpreads } from '../store'
 
-/** Every world is mounted once; each one shows itself according to its presence. */
+/**
+ * Worlds of the nearby spreads are mounted (see useNearSpreads); each one shows
+ * itself according to its presence.
+ */
 export function Worlds() {
-  const ids = [...new Set(spreads.map((s) => s.world))]
+  const near = useNearSpreads()
+  const ids = [...new Set(spreads.filter((_, i) => near(i)).map((s) => s.world))]
   return (
     <>
       {ids.map((id) => {

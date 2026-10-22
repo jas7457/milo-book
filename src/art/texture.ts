@@ -98,6 +98,7 @@ export function svgTexture(svg: string, maxPx = 1024): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(canvas)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = maxAniso
+  tex.userData.key = key
   texCache.set(key, tex)
   loadSvgImage(svg).then((img) => {
     const ctx = canvas.getContext('2d')!
@@ -106,6 +107,34 @@ export function svgTexture(svg: string, maxPx = 1024): THREE.CanvasTexture {
     tex.needsUpdate = true
   })
   return tex
+}
+
+/*
+ * GPU memory: textures are reference-counted by the components that show them
+ * (`useSvgTexture`). When nothing has used one for a few seconds (its spread
+ * or world was unmounted), it and its materials are freed. Textures made with a
+ * bare `svgTexture()` call are never retained, so they're never freed.
+ */
+const refs = new Map<THREE.Texture, number>()
+export function retainTexture(tex: THREE.Texture) {
+  refs.set(tex, (refs.get(tex) ?? 0) + 1)
+}
+export function releaseTexture(tex: THREE.Texture) {
+  const n = (refs.get(tex) ?? 1) - 1
+  refs.set(tex, n)
+  if (n > 0) return
+  setTimeout(() => {
+    if ((refs.get(tex) ?? 0) > 0) return
+    refs.delete(tex)
+    if (tex.userData.key && texCache.get(tex.userData.key) === tex) texCache.delete(tex.userData.key)
+    for (const [k, m] of matCache) {
+      if (m.map === tex) {
+        m.dispose()
+        matCache.delete(k)
+      }
+    }
+    tex.dispose()
+  }, 4000)
 }
 
 /**
