@@ -14,6 +14,9 @@ Bridge builder → Fire rescue! → Super Milo → Home again → The End.
 
 It is made for iPad in landscape and for desktop.
 
+**Play it:** https://jas7457.github.io/milo-book/. Every push to `main`
+redeploys it automatically.
+
 ## Run it
 
 ```bash

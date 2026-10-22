@@ -48,6 +48,19 @@ The dev server may already be running; check before you start another one with
 
 Example: `http://127.0.0.1:5179/?page=4&fast&unlock`.
 
+## Deploy
+
+- **Live site:** **https://jas7457.github.io/milo-book/**
+- **Repo:** `github.com/jas7457/milo-book`
+- **How it deploys:** every push to `main` runs
+  `.github/workflows/deploy.yml`, which builds and publishes to GitHub Pages
+  in about 40 s. Check it with `gh run list -L 1`.
+- **Base path:** builds use `base: '/milo-book/'` (`vite.config.ts`).
+  - Never hard-code absolute `/...` asset paths.
+  - Test a build locally under that path, e.g. copy `dist` to
+    `/tmp/pages/milo-book` and run `python3 -m http.server`.
+  - Note: `vite preview` returned 404s to the browser here.
+
 `art.html` (`/art.html`) is a scratch page for looking at single SVG art pieces
 (currently the family figures).
 
