@@ -7,6 +7,7 @@ import { windowed } from '../anim/ease'
 import { bus } from '../bus'
 import { useSpread } from './SpreadContext'
 import { Piece, type PieceProps } from './Piece'
+import { HintHand } from './HintHand'
 
 /* A soft glowing ring, shared by every drop target. */
 let ringTex: THREE.CanvasTexture | null = null
@@ -92,6 +93,9 @@ export function DragPiece({
   )
   const level = useMemo(() => () => windowed(anim.raise[index].v, delay), [index, delay])
   const r = target.r ?? 0.3
+  // drops are forgiving: anywhere near the ring counts (small fingers, wobbly aim)
+  const reach = r * 1.4 + 0.14
+  const [pw, ph] = piece.size
   const ray = useMemo(() => new THREE.Raycaster(), [])
   const plane = useMemo(() => new THREE.Plane(), [])
   const v = useMemo(() => new THREE.Vector3(), [])
@@ -229,7 +233,7 @@ export function DragPiece({
 
     // over the target?
     const d = Math.hypot(pos.x - target.at[0], pos.z - target.at[1])
-    st.over = !!grab.current && !st.done && d < r
+    st.over = !!grab.current && !st.done && d < reach
     if (st.over && hold > 0) {
       // working: shake in the hand
       m.position.x += (Math.random() - 0.5) * 0.014
@@ -259,8 +263,33 @@ export function DragPiece({
   })
 
 
+  const want = () => !st.done && !grab.current && level() >= 0.999 && pos.s === 1
+  // the show-me hand carries the real piece to the target and back
+  const demo = (k: number, press: number) => {
+    if (grab.current || st.done) return
+    const [x, z] = props.current.at
+    const [tx, tz] = props.current.target.at
+    pos.x = x + (tx - x) * k
+    pos.z = z + (tz - z) * k
+    // rise toward the drop height as it arrives (like a real drop does)
+    pos.lift = press * 0.12 + k * k * (props.current.target.y ?? 0) * 0.8
+    pos.tilt = press * 0.2
+  }
+  const padDown = (e: ThreeEvent<PointerEvent>) => {
+    if (!mover.current.visible || !outer.current.parent) return
+    down(e)
+  }
+
   return (
     <>
+      <HintHand
+        mode="drag"
+        want={want}
+        from={() => [at[0], baseY + ph * 0.5, at[1] + 0.05]}
+        to={() => [target.at[0], baseY + ph * 0.5 + (target.y ?? 0) * 0.8, target.at[1] + 0.05]}
+        dwell={hold > 0 ? 1.1 : 0.4}
+        onMove={demo}
+      />
       <mesh
         ref={ringM}
         material={ringMat}
@@ -272,7 +301,12 @@ export function DragPiece({
       </mesh>
       <group ref={outer} position={[at[0], 0, at[1]]}>
         <group ref={mover}>
-          <Piece {...piece} tap="none" onGrab={down} position={[0, baseY, 0]} level={level} />
+          <Piece {...piece} tap="none" onGrab={down} hint={() => !st.done && !grab.current} position={[0, baseY, 0]} level={level} />
+          {/* a generous grab area on the page around the piece, for small fingers */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseY + 0.003, 0.04]} onPointerDown={padDown}>
+            <planeGeometry args={[Math.max(pw, 0.3) + 0.24, 0.42]} />
+            <meshBasicMaterial visible={false} />
+          </mesh>
         </group>
       </group>
     </>

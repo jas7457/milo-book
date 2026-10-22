@@ -37,7 +37,7 @@ const EX_AT: [number, number] = [-0.1, -0.4]
 const TRUCK_AT: [number, number] = [-1.04, -0.62]
 const PILE_AT: [number, number] = [1.12, -0.3]
 const MAP_AT: [number, number] = [1.12, -0.3]
-const MAP_TO: [number, number, number] = [2.2, 1.9, -3.4]
+const MAP_TO: [number, number, number] = [2.4, 0.2, -2.4]
 const TRUCK_TO: [number, number, number] = [-1.6, 0, -5.0]
 
 /* the machine's joints, in house space (origin = turntable centre, y up) */
@@ -516,6 +516,7 @@ function DirtPile() {
       tap="none"
       contact={false}
       onTap={() => scoop()}
+      hint={() => !dig.busy && dig.scoops < 3}
     >
       {A.pileLayers.map((l, i) => (
         <Part
@@ -676,7 +677,7 @@ function Popups() {
           px={1024}
           contact={false}
           onTap={() => sendMap()}
-          escape={{ to: MAP_TO, arc: 1.6, scale: 2.6, duration: 2.6, spin: 0.5, wait: 0, on: 'map' }}
+          escape={{ to: MAP_TO, arc: 1.2, scale: 2.0, duration: 2.6, spin: 0.5, wait: 0, on: 'map' }}
         />
       </Reveal>
       <Bits />

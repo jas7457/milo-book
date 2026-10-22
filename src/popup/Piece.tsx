@@ -7,6 +7,8 @@ import { useSvgTexture } from '../art/useSvgTexture'
 import { easeInOut, easeOutBack } from '../anim/ease'
 import { bus } from '../bus'
 import { ui } from '../state'
+import { Glow } from './Glow'
+import { HintHand } from './HintHand'
 
 export type Hinge = 'back' | 'front' | 'spring' | 'rise' | 'drop' | 'left' | 'right'
 export type Idle = 'none' | 'bob' | 'sway' | 'spin' | 'float' | 'flicker' | 'rock' | 'drift'
@@ -45,6 +47,12 @@ export type PieceProps = {
   onTap?: () => void
   /** raw pointer-down on the piece (used by DragPiece to pick it up) */
   onGrab?: (e: ThreeEvent<PointerEvent>) => void
+  /**
+   * "Touch me!": a pulsing glow around the piece, a little wiggle now and then
+   * and (for tap pieces) a show-me hand when the reader is idle. Pass a
+   * function to switch it off once the job is done, e.g. `hint={() => !dug}`.
+   */
+  hint?: boolean | (() => boolean)
   escape?: Escape
   emissive?: number
   px?: number
@@ -94,7 +102,7 @@ export function Piece(props: PieceProps & { level: () => number }) {
   const {
     art, size, position, rotY = 0, hinge = 'back', lean = 0, idle = 'none', idleAmp = 1, idleSpeed = 1,
     tap = 'jump', onTap, onGrab, escape, emissive, px = 768, map, shadow = true, flat = false, level, children, vfold,
-    contact = !flat,
+    contact = !flat, hint,
   } = props
   const [w, h] = size
   const tex = useSvgTexture(art, px, map)
@@ -126,6 +134,11 @@ export function Piece(props: PieceProps & { level: () => number }) {
     [],
   )
   const armed = useRef(false)
+  const hintOn = useMemo(
+    () => () =>
+      !!(typeof hint === 'function' ? hint() : hint) && level() >= 0.999 && !!outer.current?.visible && esc.current <= 0,
+    [hint, level],
+  )
   useEffect(() => {
     if (!escape?.on) return
     return bus.on('pull', (id) => {
@@ -195,6 +208,15 @@ export function Piece(props: PieceProps & { level: () => number }) {
     ig.position.set(0, tapS.y, 0)
     ig.rotation.set(0, tapS.ry, tapS.rz)
     ig.scale.set(tapS.s, tapS.s, tapS.s)
+    // "touch me": a little wiggle every few seconds
+    if (hint && hintOn()) {
+      const ph = (state.clock.elapsedTime + seed) % 3.6
+      if (ph < 0.6) {
+        const q = ph / 0.6
+        ig.rotation.z += Math.sin(q * Math.PI * 4) * 0.07 * (1 - q)
+        ig.position.y += Math.sin(q * Math.PI) * 0.025
+      }
+    }
     switch (idle) {
       case 'bob':
         ig.position.y += Math.sin(t * 2.2) * 0.02 * k
@@ -320,9 +342,13 @@ export function Piece(props: PieceProps & { level: () => number }) {
               <planeGeometry args={[w, h]} />
             </mesh>
           )}
+          {hint && !halves && <Glow map={tex} w={w} h={h} on={hintOn} position={[0, h / 2, flat ? 0.002 : -0.004]} />}
           {children}
         </group>
       </group>
+      {hint && !onGrab && (onTap || tap !== 'none') && (
+        <HintHand mode="tap" from={() => (flat ? [0, 0.02, -h / 2] : [0, h * 0.5, 0.04])} want={hintOn} />
+      )}
       {contact && (
         <mesh ref={shadowM} material={shadowMat} rotation={[-Math.PI / 2, 0, 0]} renderOrder={1}>
           <planeGeometry args={[1, 1]} />

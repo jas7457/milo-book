@@ -7,6 +7,8 @@ import { windowed } from '../anim/ease'
 import { useSpread } from './SpreadContext'
 import { bus } from '../bus'
 import { FONT, waitFonts } from '../book/pageTextures'
+import { Glow } from './Glow'
+import { HintHand } from './HintHand'
 
 /* Labels are drawn with canvas 2D (SVG images can't use the page's web font). */
 
@@ -205,6 +207,14 @@ export function PullTab({
     tab.current.position.x = rest + st.off + hint
   })
 
+  // until it has been pulled: glow, and a show-me hand that pulls it a little
+  const want = () => !st.pulled && !drag.current && live() && root.current?.visible
+  const demo = (k: number) => {
+    if (drag.current || st.pulled || gsap.isTweening(st)) return
+    st.off = k * SLIDE * 0.85
+  }
+  const FLAT: [number, number, number] = [-Math.PI / 2, 0, 0]
+
   const hover = {
     onPointerOver: () => {
       if (root.current.visible && !ui.dragging) document.body.style.cursor = 'grab'
@@ -216,7 +226,17 @@ export function PullTab({
 
   return (
     <group ref={root} position={[at[0], baseY + 0.002, at[1]]}>
+      <HintHand
+        mode="drag"
+        want={want}
+        from={() => [rest + TW * 0.22, 0.015, 0]}
+        to={() => [rest + TW * 0.22 + SLIDE * 0.85, 0.015, 0]}
+        dwell={0.3}
+        onMove={demo}
+      />
+      <Glow map={mats.label.map!} w={LW} h={LH} pad={0.035} on={want} rotation={FLAT} position={[0, 0.003, 0]} />
       <group ref={tab}>
+        <Glow map={mats.tab.map!} w={TW} h={TH} pad={0.04} on={want} rotation={FLAT} position={[0, -0.001, 0]} />
         <mesh material={mats.tab} rotation={[-Math.PI / 2, 0, 0]} onPointerDown={down} {...hover} receiveShadow>
           <planeGeometry args={[TW, TH]} />
         </mesh>
