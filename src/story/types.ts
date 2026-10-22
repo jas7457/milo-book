@@ -48,6 +48,8 @@ export type SpreadDef = {
    * final screen). The last leaf and the back board swing over together.
    */
   closed?: 'back'
+  /** for `closed` spreads: the board's art + title (drawn like the front cover) */
+  cover?: { art: string; title: string[]; subtitle: string }
   /** what Milo does when this spread opens */
   miloReact?: 'wave' | 'cheer' | 'point' | 'jump'
 }

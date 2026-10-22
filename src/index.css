@@ -173,3 +173,36 @@ canvas {
   transition: opacity 0.8s;
   pointer-events: none;
 }
+
+/* the back cover: start over */
+.again {
+  pointer-events: auto;
+  position: absolute;
+  right: 28px;
+  bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 26px 14px 18px;
+  border-radius: 40px;
+  border: 5px solid #fff6e0;
+  background: #e8572b;
+  box-shadow: 0 6px 0 #9c3517, 0 10px 24px rgba(60, 30, 10, 0.35);
+  color: #fff;
+  font: 700 30px Fredoka, system-ui, sans-serif;
+  cursor: pointer;
+  animation: fadeIn 0.8s ease 0.6s both;
+}
+.again svg {
+  width: 34px;
+  height: 34px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.again:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #9c3517;
+}

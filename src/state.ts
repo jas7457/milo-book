@@ -36,6 +36,11 @@ export const anim = {
   envTo: null as Palette | null,
   /** camera: 0 = closed book framing, 1 = open book framing; push = dive-in */
   cam: { open: 0, push: 0 },
+  /**
+   * The ending: v = the back board (with the last leaf) swung over onto the
+   * left stack (0 → 1); slide = the closed book slid right into view (0 → 1).
+   */
+  back: { v: 0, slide: 0 },
   /** Milo's twirl when changing outfit */
   milo: { spin: 0 },
   time: 0,

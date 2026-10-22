@@ -10,6 +10,7 @@ export function Controls() {
   const spread = useBook((s) => s.spread)
   const busy = useBook((s) => s.busy)
   const go = useBook((s) => s.go)
+  const restart = useBook((s) => s.restart)
   const done = useProgress((p) => !!p.done[spreads[spread].id])
 
   useEffect(() => {
@@ -80,6 +81,12 @@ export function Controls() {
         ))}
       </div>
       {spread === 0 && <div className="open-hint">Tap the arrow to open the book!</div>}
+      {spreads[spread].closed === 'back' && !busy && (
+        <button className="again" onClick={restart}>
+          <svg viewBox="0 0 40 40"><path d="M30 20 A10 10 0 1 1 26 12 M26 5 V12 H19" /></svg>
+          Read again
+        </button>
+      )}
     </div>
   )
 }

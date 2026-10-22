@@ -16,6 +16,7 @@ initProgress(spreads)
 // ?page=N jumps straight to a spread (handy while authoring)
 const start = Math.min(spreads.length - 1, Math.max(0, Number(new URLSearchParams(location.search).get('page') ?? 0) || 0))
 for (let i = 0; i < start; i++) anim.leaves[i].p = 1
+if (spreads[start].closed === 'back') anim.back.v = anim.back.slide = 1
 anim.presence[spreads[start].world].v = 1
 anim.raise[start].v = 1
 anim.cam.open = start > 0 ? 1 : 0

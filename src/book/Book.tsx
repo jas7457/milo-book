@@ -11,6 +11,9 @@ import { SpreadProvider } from '../popup/SpreadContext'
 import { StoryCard } from './StoryCard'
 
 const N = spreads.length
+/** the last open spread (spreads after it are closed views, e.g. the back cover) */
+const LAST = spreads.reduce((m, s, i) => (s.closed ? m : i), 0)
+const BACK = spreads.find((s) => s.closed === 'back')
 const COVER_W = PAGE_W + 0.07
 const COVER_H = PAGE_H + 0.14
 const CLOTH = '#b02e28'
@@ -27,7 +30,7 @@ function Leaf({ i }: { i: number }) {
   const geo = useMemo(createLeafGeometry, [])
   const [front, back] = useMemo(() => {
     const f = rightPageTexture(spreads[i], i)
-    const b = i + 1 < N ? leftPageTexture(spreads[i + 1], i + 1, true) : blankPageTexture(true, i)
+    const b = i + 1 < N && !spreads[i + 1].closed ? leftPageTexture(spreads[i + 1], i + 1, true) : blankPageTexture(true, i)
     return [paperMat(f, THREE.FrontSide), paperMat(b, THREE.BackSide)]
   }, [i])
   const last = useRef(-1)
@@ -82,6 +85,43 @@ function Cover() {
   )
 }
 
+/**
+ * The hard back board. It lies under the right-hand pages; at the end of the
+ * story it swings over (with the last leaf) onto the left stack, showing the
+ * back cover on its outside.
+ */
+function BackBoard() {
+  const ref = useRef<THREE.Group>(null!)
+  const { edge, outside } = useMemo(() => {
+    const edge = new THREE.MeshStandardMaterial({ color: CLOTH, roughness: 0.85 })
+    const outside = new THREE.MeshStandardMaterial({
+      map: BACK?.cover ? coverTexture(BACK.cover.art, BACK.cover.title, BACK.cover.subtitle) : null,
+      color: BACK?.cover ? '#ffffff' : CLOTH,
+      roughness: 0.8,
+    })
+    return { edge, outside }
+  }, [])
+  useFrame(() => {
+    const v = anim.back.v
+    ref.current.rotation.z = v * Math.PI
+    // flipped over, the board's outside faces up: rest it on top of the left stack
+    const top = BOARD_T + (LAST + 1) * LEAF_GAP + BOARD_T + 0.004
+    ref.current.position.y = top * v + Math.sin(v * Math.PI) * 0.05
+  })
+  return (
+    <group ref={ref}>
+      <group position={[COVER_W / 2, BOARD_T / 2, 0]}>
+        <mesh material={edge} castShadow receiveShadow>
+          <boxGeometry args={[COVER_W, BOARD_T, COVER_H]} />
+        </mesh>
+        <mesh material={outside} position={[0, -BOARD_T / 2 - 0.001, 0]} rotation={[Math.PI / 2, 0, Math.PI]}>
+          <planeGeometry args={[COVER_W - 0.01, COVER_H - 0.01]} />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
 /** Page blocks: the visible thickness of the paper stacks, plus spine and back board. */
 function Blocks() {
   const right = useRef<THREE.Mesh>(null!)
@@ -89,8 +129,8 @@ function Blocks() {
   const spine = useRef<THREE.Mesh>(null!)
   useFrame(() => {
     let r = 0
-    for (let i = 1; i < N; i++) r += 1 - anim.leaves[i].p
-    const l = N - 1 - r
+    for (let i = 1; i <= LAST; i++) r += 1 - anim.leaves[i].p
+    const l = LAST - r
     const rh = Math.max(0.001, (r - 0.5) * LEAF_GAP)
     const lh = Math.max(0.001, (l - 0.5) * LEAF_GAP)
     right.current.visible = r > 0.6
@@ -99,7 +139,7 @@ function Blocks() {
     right.current.position.y = BOARD_T + rh / 2
     left.current.scale.y = lh
     left.current.position.y = BOARD_T + lh / 2
-    const closed = 1 - anim.leaves[0].p
+    const closed = Math.max(1 - anim.leaves[0].p, anim.back.v)
     const sh = BOARD_T * 2 + N * LEAF_GAP
     spine.current.scale.y = 0.02 + closed * sh
     spine.current.position.y = spine.current.scale.y / 2
@@ -114,10 +154,6 @@ function Blocks() {
       <mesh ref={left} material={paperEdge} position={[-PAGE_W / 2, 0, 0]} castShadow receiveShadow>
         <boxGeometry args={[PAGE_W - 0.01, 1, PAGE_H - 0.01]} />
       </mesh>
-      {/* back cover board */}
-      <mesh material={cloth} position={[COVER_W / 2, BOARD_T / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[COVER_W, BOARD_T, COVER_H]} />
-      </mesh>
       <mesh ref={spine} material={cloth} position={[-0.015, 0, 0]} castShadow>
         <boxGeometry args={[0.04, 1, COVER_H]} />
       </mesh>
@@ -130,13 +166,20 @@ export const BOOK_TILT = 0.3
 
 export function Book() {
   const near = useNearSpreads()
+  const slide = useRef<THREE.Group>(null!)
+  // the closed-at-the-back book lies left of the spine: slide it right into view
+  useFrame(() => {
+    slide.current.position.x = anim.back.slide * COVER_W
+  })
   return (
+    <group ref={slide}>
     <group rotation={[BOOK_TILT, 0, 0]} position={[0, Math.sin(BOOK_TILT) * (PAGE_H / 2 + 0.07) + 0.01, 0.15]}>
       <Cover />
-      {spreads.slice(1).map((_, k) => (
+      {spreads.slice(1, LAST + 1).map((_, k) => (
         <Leaf key={k + 1} i={k + 1} />
       ))}
       <Blocks />
+      <BackBoard />
       {spreads.map((s, i) =>
         s.Popups && near(i) ? (
           <SpreadProvider key={s.id} index={i} baseY={BOARD_T + Math.max(i, N - i) * LEAF_GAP + 0.003}>
@@ -145,6 +188,7 @@ export function Book() {
           </SpreadProvider>
         ) : null,
       )}
+    </group>
     </group>
   )
 }

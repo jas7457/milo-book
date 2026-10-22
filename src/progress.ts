@@ -84,3 +84,9 @@ export function initProgress(list: SpreadDef[]) {
   if (debug.unlock) useProgress.setState({ done: Object.fromEntries(list.map((s) => [s.id, true])) })
   for (const s of list) check(s.id)
 }
+
+/** "Read again": a brand-new read-through, every page locked again. */
+export function resetAll() {
+  useProgress.setState({ stage: {}, written: {}, done: debug.unlock ? useProgress.getState().done : {}, writing: '' })
+  for (const id of defs.keys()) check(id)
+}
