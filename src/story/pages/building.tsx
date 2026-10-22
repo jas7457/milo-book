@@ -428,10 +428,14 @@ function Castle() {
   )
 }
 
+/**
+ * One row at the same depth with clear gaps (blocks are ~0.37 wide), in slot
+ * order: red, yellow, blue left to right, so each reads as its own colour.
+ */
 const dragBlocks: { v: number; at: [number, number] }[] = [
-  { v: 0, at: [0.78, 0.84] },
-  { v: 1, at: [1.12, 0.95] },
-  { v: 2, at: [1.45, 0.8] },
+  { v: 0, at: [0.62, 0.86] },
+  { v: 1, at: [1.02, 0.86] },
+  { v: 2, at: [1.42, 0.86] },
 ]
 
 /** the three blocks to carry across: red, yellow and blue each fit the slot with their own colour */
@@ -445,7 +449,7 @@ function Blocks() {
           size={SEG_SIZE}
           at={at}
           delay={0.36 + i * 0.04}
-          rotY={-0.1 + i * 0.1}
+          rotY={-0.04 + i * 0.04}
           idle="bob"
           target={{ at: slotAt(v), r: 0.15, y: DECK + 0.02 }}
           consume
