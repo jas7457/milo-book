@@ -119,52 +119,76 @@ export function PullTab({
   const root = useRef<THREE.Group>(null!)
   const tab = useRef<THREE.Group>(null!)
   const st = useMemo(() => ({ off: 0, pulled: false, t0: 0 }), [])
-  const drag = useRef<{ x: number; moved: number } | null>(null)
+  const drag = useRef<{ x: number; moved: number; id: number } | null>(null)
+  const live = () => windowed(anim.raise[index].v, delay) >= 0.99
+  const onPullRef = useRef(onPull)
+  onPullRef.current = onPull
 
   const fire = () => {
+    // the page turned during the slide-out: don't fire on the wrong page
+    if (!live()) return
     st.pulled = true
     bus.emit('pull', id)
     bus.emit('sfx', 'whoosh')
-    onPull?.()
+    onPullRef.current?.()
     gsap.to(st, { off: 0, duration: 0.9, delay: 0.25, ease: 'elastic.out(1, 0.45)' })
   }
 
+  /** let go of the tab (pull = false: cancelled, slides back) */
+  const release = (pull: boolean) => {
+    const d = drag.current
+    if (!d) return
+    drag.current = null
+    ui.dragging = false
+    ui.grab = false
+    document.body.style.cursor = ''
+    if (pull && live() && d.moved < 10) {
+      // a tap: slide it out for them
+      gsap.to(st, { off: SLIDE, duration: 0.22, ease: 'power2.out', onComplete: fire })
+    } else if (pull && live() && st.off > SLIDE * 0.55) {
+      gsap.to(st, { off: SLIDE, duration: 0.08, onComplete: fire })
+    } else gsap.to(st, { off: 0, duration: 0.5, ease: 'back.out(2)' })
+  }
+
+  const handlers = useRef({ move: (_e: PointerEvent) => {}, up: (_e: PointerEvent) => {}, cancel: () => {} })
+  handlers.current.move = (e) => {
+    const d = drag.current
+    if (!d || e.pointerId !== d.id) return
+    if (e.pointerType === 'mouse' && e.buttons === 0) return release(false)
+    const dx = e.clientX - d.x
+    d.moved = Math.max(d.moved, Math.abs(dx))
+    st.off = Math.min(SLIDE, Math.max(0, (dx / 170) * SLIDE))
+  }
+  handlers.current.up = (e) => {
+    if (drag.current && e.pointerId === drag.current.id) release(true)
+  }
+  handlers.current.cancel = () => release(false)
   useEffect(() => {
-    const move = (e: PointerEvent) => {
-      const d = drag.current
-      if (!d) return
-      const dx = e.clientX - d.x
-      d.moved = Math.max(d.moved, Math.abs(dx))
-      st.off = Math.min(SLIDE, Math.max(0, (dx / 170) * SLIDE))
-    }
-    const up = () => {
-      const d = drag.current
-      if (!d) return
-      drag.current = null
-      ui.dragging = false
-      document.body.style.cursor = ''
-      if (d.moved < 10) {
-        // a tap: slide it out for them
-        gsap.to(st, { off: SLIDE, duration: 0.22, ease: 'power2.out', onComplete: fire })
-      } else if (st.off > SLIDE * 0.55) {
-        gsap.to(st, { off: SLIDE, duration: 0.08, onComplete: fire })
-      } else gsap.to(st, { off: 0, duration: 0.5, ease: 'back.out(2)' })
-    }
+    const move = (e: PointerEvent) => handlers.current.move(e)
+    const up = (e: PointerEvent) => handlers.current.up(e)
+    const cancel = (e: PointerEvent) => drag.current && e.pointerId === drag.current.id && handlers.current.cancel()
+    const blur = () => handlers.current.cancel()
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', cancel)
+    window.addEventListener('blur', blur)
     return () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', cancel)
+      window.removeEventListener('blur', blur)
+      handlers.current.cancel()
     }
-  })
+  }, [])
 
   const down = (e: ThreeEvent<PointerEvent>) => {
+    // hidden or still rising: let the tap fall through to whatever is there
+    if (!root.current.visible || !live() || drag.current) return
     e.stopPropagation()
-    if (windowed(anim.raise[index].v, delay) < 0.99) return
     ui.grab = true
     ui.dragging = true
     gsap.killTweensOf(st)
-    drag.current = { x: e.nativeEvent.clientX, moved: 0 }
+    drag.current = { x: e.nativeEvent.clientX, moved: 0, id: e.nativeEvent.pointerId }
     document.body.style.cursor = 'grabbing'
   }
 
@@ -174,6 +198,7 @@ export function PullTab({
     root.current.scale.setScalar(0.6 + 0.4 * l)
     mats.label.opacity = mats.tab.opacity = l
     if (l < 0.5) st.pulled = false
+    if (drag.current && l < 0.99) release(false)
     // until it has been pulled once, the tab peeks out now and then
     const t = s.clock.elapsedTime
     const hint = !st.pulled && !drag.current && l >= 1 ? Math.pow(Math.max(0, Math.sin(t * 1.7)), 8) * 0.07 : 0
@@ -181,8 +206,12 @@ export function PullTab({
   })
 
   const hover = {
-    onPointerOver: () => (document.body.style.cursor = 'grab'),
-    onPointerOut: () => !drag.current && (document.body.style.cursor = ''),
+    onPointerOver: () => {
+      if (root.current.visible && !ui.dragging) document.body.style.cursor = 'grab'
+    },
+    onPointerOut: () => {
+      if (!ui.dragging) document.body.style.cursor = ''
+    },
   }
 
   return (
@@ -194,7 +223,7 @@ export function PullTab({
         {/* a generous invisible grab area for small fingers */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[TW * 0.3, 0.001, 0]} onPointerDown={down} {...hover}>
           <planeGeometry args={[TW * 0.8, 0.3]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+          <meshBasicMaterial visible={false} />
         </mesh>
       </group>
       <mesh material={mats.label} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]} onPointerDown={down} {...hover} receiveShadow>

@@ -457,6 +457,14 @@ const drillState: DragState = { progress: 0, over: false, done: false, held: fal
 const ROBO_AT: [number, number] = [-0.62, -0.28]
 const BOX_AT: [number, number] = [0.66, 0.18]
 
+/** Running story timelines; killed when the page turns away (their callbacks too). */
+let timelines: gsap.core.Timeline[] = []
+const story = () => {
+  const tl = gsap.timeline({ onComplete: () => (timelines = timelines.filter((t) => t !== tl)) })
+  timelines.push(tl)
+  return tl
+}
+
 /** Resets this spread's state when the page is turned away; owns timers. */
 function ToolsDirector() {
   const { index } = useSpread()
@@ -465,6 +473,8 @@ function ToolsDirector() {
     const away = anim.raise[index].v < 0.5
     if (away && live.current) {
       live.current = false
+      timelines.forEach((t) => t.kill())
+      timelines = []
       gsap.killTweensOf(robo)
       gsap.killTweensOf(car)
       Object.assign(robo, { power: 0, battery: false, talk: 0 })
@@ -477,8 +487,8 @@ function ToolsDirector() {
 function powerUp() {
   robo.battery = true
   bus.emit('sfx', 'snap')
-  const tl = gsap.timeline()
-  tl.add(() => bus.emit('sfx', 'powerup'), 0.15)
+  story()
+    .add(() => bus.emit('sfx', 'powerup'), 0.15)
     .to(robo, { power: 1, duration: 1.1, ease: 'power1.inOut' }, 0.15)
     .add(() => bus.emit('milo', 'cheer'), 0.5)
     .add(() => bus.emit('sfx', 'robot'), 1.3)
@@ -492,7 +502,7 @@ function powerUp() {
 
 function wheelsOn() {
   bus.emit('sfx', 'snap')
-  gsap.timeline()
+  story()
     .to(car, { wheels: 1, duration: 0.7, ease: 'power1.out' }, 0.1)
     .add(() => bus.emit('sfx', 'boing'), 0.15)
     .add(() => bus.emit('sfx', 'sparkle'), 0.5)

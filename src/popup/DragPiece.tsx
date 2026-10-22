@@ -62,6 +62,7 @@ export function DragPiece({
   onHolding,
   state: ext,
   color = '#ffe27a',
+  holdSfx = 'drill',
   ...piece
 }: Omit<PieceProps, 'position'> & {
   at: [number, number]
@@ -75,6 +76,8 @@ export function DragPiece({
   state?: DragState
   /** colour of the target ring */
   color?: string
+  /** sound repeated while holding over the target (default 'drill') */
+  holdSfx?: string
 }) {
   const { index, baseY } = useSpread()
   const { camera, gl } = useThree()
@@ -93,33 +96,57 @@ export function DragPiece({
   const plane = useMemo(() => new THREE.Plane(), [])
   const v = useMemo(() => new THREE.Vector3(), [])
   const n = useMemo(() => new THREE.Vector3(), [])
-  const grab = useRef<{ dx: number; dz: number } | null>(null)
+  const grab = useRef<{ dx: number; dz: number; id: number } | null>(null)
   const sfxT = useRef(0)
+  const ndc = useMemo(() => new THREE.Vector2(), [])
+  const hitV = useMemo(() => new THREE.Vector3(), [])
+  // latest props for the window listeners (registered once)
+  const props = useRef({ hold, onDone, consume, target, at })
+  props.current = { hold, onDone, consume, target, at }
 
   /** pointer → point on the page (in the book's local space) */
   const pagePoint = (cx: number, cy: number) => {
     const parent = outer.current?.parent
     if (!parent) return null
     const rect = gl.domElement.getBoundingClientRect()
-    ray.setFromCamera(new THREE.Vector2(((cx - rect.left) / rect.width) * 2 - 1, -((cy - rect.top) / rect.height) * 2 + 1), camera)
+    ray.setFromCamera(ndc.set(((cx - rect.left) / rect.width) * 2 - 1, -((cy - rect.top) / rect.height) * 2 + 1), camera)
     parent.updateWorldMatrix(true, false)
     n.set(0, 1, 0).transformDirection(parent.matrixWorld)
     v.set(0, baseY, 0).applyMatrix4(parent.matrixWorld)
     plane.setFromNormalAndCoplanarPoint(n, v)
-    const hit = ray.ray.intersectPlane(plane, new THREE.Vector3())
+    const hit = ray.ray.intersectPlane(plane, hitV)
     return hit ? parent.worldToLocal(hit) : null
   }
 
   const goHome = () => {
-    gsap.to(pos, { x: at[0], z: at[1], lift: 0, tilt: 0, duration: 0.6, ease: 'back.out(1.6)' })
+    const [x, z] = props.current.at
+    gsap.to(pos, { x, z, lift: 0, tilt: 0, duration: 0.6, ease: 'back.out(1.6)' })
+  }
+
+  /** let go of the piece (drop = false: cancelled, never counts as a drop) */
+  const release = (drop: boolean) => {
+    if (!grab.current) return
+    grab.current = null
+    st.held = false
+    ui.dragging = false
+    ui.grab = false
+    document.body.style.cursor = ''
+    if (drop && !st.done && props.current.hold === 0 && st.over && level() >= 0.99) finish()
+    else {
+      st.over = false
+      if (!st.done) st.progress = 0
+      goHome()
+    }
   }
 
   const finish = () => {
+    const { onDone, consume, target } = props.current
     st.done = true
     st.over = false
     grab.current = null
     st.held = false
     ui.dragging = false
+    ui.grab = false
     document.body.style.cursor = ''
     onDone?.()
     if (consume) {
@@ -128,44 +155,56 @@ export function DragPiece({
     } else goHome()
   }
 
+  // window listeners, once. Only the finger that picked the piece up moves or drops it.
+  const handlers = useRef({ move: (_e: PointerEvent) => {}, up: (_e: PointerEvent) => {}, cancel: () => {} })
+  handlers.current.move = (e) => {
+    const g = grab.current
+    if (!g || e.pointerId !== g.id) return
+    // desktop: button released outside the window
+    if (e.pointerType === 'mouse' && e.buttons === 0) return release(false)
+    const p = pagePoint(e.clientX, e.clientY)
+    if (!p) return
+    // keep it on the open book
+    pos.x = THREE.MathUtils.clamp(p.x + g.dx, -1.5, 1.5)
+    pos.z = THREE.MathUtils.clamp(p.z + g.dz, -1.0, 1.05)
+  }
+  handlers.current.up = (e) => {
+    if (grab.current && e.pointerId === grab.current.id) release(true)
+  }
+  handlers.current.cancel = () => release(false)
   useEffect(() => {
-    const move = (e: PointerEvent) => {
-      if (!grab.current) return
-      const p = pagePoint(e.clientX, e.clientY)
-      if (!p) return
-      // keep it on the open book
-      pos.x = THREE.MathUtils.clamp(p.x + grab.current.dx, -1.5, 1.5)
-      pos.z = THREE.MathUtils.clamp(p.z + grab.current.dz, -1.0, 1.05)
-    }
-    const up = () => {
-      if (!grab.current) return
-      grab.current = null
-      st.held = false
-      ui.dragging = false
-      document.body.style.cursor = ''
-      if (!st.done && hold === 0 && st.over) finish()
-      else {
-        st.over = false
-        if (!st.done) st.progress = 0
-        goHome()
-      }
-    }
+    const move = (e: PointerEvent) => handlers.current.move(e)
+    const up = (e: PointerEvent) => handlers.current.up(e)
+    const cancel = (e: PointerEvent) => grab.current && e.pointerId === grab.current.id && handlers.current.cancel()
+    const blur = () => handlers.current.cancel()
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', cancel)
+    window.addEventListener('blur', blur)
     return () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', cancel)
+      window.removeEventListener('blur', blur)
+      handlers.current.cancel()
+      ringMat.dispose()
     }
-  })
+  }, [ringMat])
 
   const down = (e: ThreeEvent<PointerEvent>) => {
-    if (st.done || level() < 0.99) return
+    if (level() < 0.99 || grab.current) return
     e.stopPropagation()
+    if (st.done) {
+      // already used: a happy little wiggle
+      gsap.fromTo(pos, { tilt: 0.6 }, { tilt: 0, duration: 0.6, ease: 'elastic.out(1, 0.3)' })
+      bus.emit('sfx', 'boing')
+      return
+    }
     ui.grab = true
     ui.dragging = true
     gsap.killTweensOf(pos)
     const p = pagePoint(e.nativeEvent.clientX, e.nativeEvent.clientY)
-    grab.current = { dx: p ? pos.x - p.x : 0, dz: p ? pos.z - p.z : 0 }
+    grab.current = { dx: p ? pos.x - p.x : 0, dz: p ? pos.z - p.z : 0, id: e.nativeEvent.pointerId }
     st.held = true
     bus.emit('sfx', 'pop')
     gsap.to(pos, { lift: 0.14, tilt: 0.25, duration: 0.2, ease: 'power2.out' })
@@ -174,6 +213,8 @@ export function DragPiece({
 
   useFrame((s, dt) => {
     const l = level()
+    // the page started turning while it was held: let go
+    if (grab.current && l < 0.99) release(false)
     // page turned away: put everything back for next time
     if (l < 0.5 && (st.done || pos.s !== 1)) {
       gsap.killTweensOf(pos)
@@ -198,7 +239,7 @@ export function DragPiece({
       onHolding?.(st.progress)
       sfxT.current -= dt
       if (sfxT.current <= 0) {
-        bus.emit('sfx', 'drill')
+        bus.emit('sfx', holdSfx)
         sfxT.current = 0.42
       }
       if (st.progress >= 1) finish()

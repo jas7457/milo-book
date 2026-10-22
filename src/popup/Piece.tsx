@@ -6,6 +6,7 @@ import { paperMaterial } from '../art/texture'
 import { useSvgTexture } from '../art/useSvgTexture'
 import { easeInOut, easeOutBack } from '../anim/ease'
 import { bus } from '../bus'
+import { ui } from '../state'
 
 export type Hinge = 'back' | 'front' | 'spring' | 'rise' | 'drop' | 'left' | 'right'
 export type Idle = 'none' | 'bob' | 'sway' | 'spin' | 'float' | 'flicker' | 'rock' | 'drift'
@@ -292,12 +293,12 @@ export function Piece(props: PieceProps & { level: () => number }) {
   const ptr = {
     onPointerDown: onDown,
     onPointerOver: () => {
-      if (!outer.current.visible) return
+      if (!outer.current.visible || ui.dragging) return
       if (onGrab) document.body.style.cursor = 'grab'
       else if (tap !== 'none' || onTap) document.body.style.cursor = 'pointer'
     },
     onPointerOut: () => {
-      document.body.style.cursor = ''
+      if (!ui.dragging) document.body.style.cursor = ''
     },
   }
 
