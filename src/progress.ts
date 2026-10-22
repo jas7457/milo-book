@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Para, SpreadDef } from './story/types'
+import { debug } from './debug'
 
 /*
  * Reading progress — what gates the "next page" arrow.
@@ -80,5 +81,6 @@ export const isDone = (id: string) => !!useProgress.getState().done[id]
 /** Spreads without beats or text (the cover) are complete from the start. */
 export function initProgress(list: SpreadDef[]) {
   registerSpreads(list)
+  if (debug.unlock) useProgress.setState({ done: Object.fromEntries(list.map((s) => [s.id, true])) })
   for (const s of list) check(s.id)
 }

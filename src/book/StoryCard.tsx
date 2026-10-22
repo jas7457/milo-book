@@ -12,6 +12,7 @@ import { markWritten, paraAfter, setWriting, stageOf, useProgress } from '../pro
 import { svgDoc } from '../art/texture'
 import { useSvgTexture } from '../art/useSvgTexture'
 import { INK } from '../art/style'
+import { debug } from '../debug'
 
 /** Card width on the page (world units); the left page is 1.6 wide. */
 const CARD_W = 1.2
@@ -24,12 +25,12 @@ const LEAN = 0.72
 
 /* ---------------------------------------------------------------- pacing -- */
 
-/** letters per second: an unhurried read-aloud pace */
-const CPS = 12.5
+/** letters per second: a brisk read-aloud pace */
+const CPS = 17
 /** extra pause after a word: none / comma / sentence end */
-const PAUSE = [0.1, 0.32, 0.6]
+const PAUSE = [0.07, 0.22, 0.42]
 /** breath between paragraphs */
-const PARA_GAP = 0.5
+const PARA_GAP = 0.4
 /** wait after the card has popped up before the pencil starts */
 const START_DELAY = 0.6
 
@@ -262,7 +263,7 @@ function WritingCard({ spread, art }: { spread: SpreadDef; art: StoryCardArt }) 
   const rest = useMemo(() => new THREE.Vector3(), [])
 
   useFrame((_, rawDt) => {
-    const dt = Math.min(rawDt, 0.1)
+    const dt = Math.min(rawDt, 0.1) * (debug.fast ? 8 : 1)
     const id = spread.id
     const v = anim.raise[index].v
     const book = useBook.getState()
