@@ -101,8 +101,9 @@ the back.
 
 **Which spreads are mounted (`useNearSpreads`):**
 - the settled spread, its neighbours, and the target of a running turn;
-- the window only slides after a turn finishes, so new pages are built while
-  nothing is animating;
+- the window only slides once a turn's whole timeline has played out
+  (`useBook.settled`, set on the timeline's `onComplete`), not when the input
+  lock lifts, so new pages are built while nothing is animating;
 - everything else is unmounted, so its textures can be freed.
 
 ## 4. The book (`src/book/`)
@@ -320,7 +321,14 @@ On top of that:
   - `svgDoc(w, h, body, { cut, defs, grain, edge })` wraps an SVG body as a
     die-cut paper piece: grain, a cream cut edge along the `cut` path, and a
     dark rim.
-  - `svgTexture(svg, maxPx)` rasterises the SVG to a `CanvasTexture`.
+  - `svgDoc` output is deterministic (the grain seed is a hash of the art), so
+    art built inside a render hits the texture cache. Never put a counter or
+    `Math.random()` into an SVG string built during render: every re-render
+    would repaint and re-upload it.
+  - The cut edge is one `feGaussianBlur` + two alpha thresholds (not
+    `feMorphology`, which cost ~10× more to paint).
+  - `svgTexture(svg, maxPx)` returns a `CanvasTexture` at once; the painting
+    and GPU upload are queued and done by `pumpTextures` (see §12).
   - `retainTexture`/`releaseTexture` ref-count textures, and `useSvgTexture`
     is the hook that does this automatically.
   - `paperMaterial(map)` is the standard paper material.
@@ -352,5 +360,18 @@ On top of that:
 - SVG textures are ref-counted and disposed on unmount (`useSvgTexture`).
 - Big pieces opt into `px={2048}`; most use 1024 or less.
 - `dpr` is clamped to `[1, 2]`, and shadows use PCF.
+
+**Smooth page turns.** A turn must never compile a shader or upload a texture.
+- **Light pool (`scene/lightPool.tsx`).** three.js bakes the number of lights
+  into every shader, so adding, removing or hiding a light recompiles every
+  material (this froze turns for ~0.4 s). Spreads and worlds never put real
+  lights in the scene: use `<PoolPointLight>` / `<PoolSpotLight>` (same props
+  and refs as `<pointLight>` / `<spotLight>`). They borrow one of a fixed set
+  (6 point, 2 spot) that never leaves the scene. If you need more, raise
+  `POINTS`/`SPOTS` (it warns in the console when it runs out).
+- **Prewarm (`scene/Prewarm.tsx`).** Paints and uploads queued SVG textures,
+  about 2 MP per frame (no limit for the first 4 s). After each settle it
+  uploads every texture in the scene and calls `gl.compileAsync`, so hidden
+  pieces of the next pages are ready before they first show.
 - Known gaps (see the backlog): Milo's textures, and a performance and memory
   pass on a real iPad.

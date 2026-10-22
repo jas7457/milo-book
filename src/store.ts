@@ -10,6 +10,8 @@ import { isDone, resetAll, resetProgress } from './progress'
 type Store = {
   spread: number
   busy: boolean
+  /** the spread whose neighbours are mounted: moves only once a turn's animation has fully played out */
+  settled: number
   outfit: Outfit
   started: boolean
   go: (dir: 1 | -1) => void
@@ -18,9 +20,13 @@ type Store = {
   start: () => void
 }
 
+/** bumps with every turn, so only the latest turn moves `settled` */
+let turnId = 0
+
 export const useBook = create<Store>((set, get) => ({
   spread: 0,
   busy: false,
+  settled: 0,
   started: false,
   outfit: spreads[0].outfit,
   start: () => set({ started: true }),
@@ -29,7 +35,10 @@ export const useBook = create<Store>((set, get) => ({
     if (busy || from === 0) return
     set({ busy: true, spread: 0 })
     resetAll()
-    flipBack(from, () => set({ busy: false }), (outfit) => set({ outfit }))
+    const id = ++turnId
+    flipBack(from, () => set({ busy: false }), (outfit) => set({ outfit })).eventCallback('onComplete', () => {
+      if (id === turnId) set({ settled: 0 })
+    })
   },
   go: (dir) => {
     const { spread: from, busy } = get()
@@ -39,7 +48,11 @@ export const useBook = create<Store>((set, get) => ({
     if (dir > 0 && !isDone(spreads[from].id)) return
     resetProgress(spreads[to].id)
     set({ busy: true, spread: to })
-    turn(from, to, () => set({ busy: false }), (outfit) => set({ outfit }))
+    const id = ++turnId
+    turn(from, to, () => set({ busy: false }), (outfit) => set({ outfit })).eventCallback('onComplete', () => {
+      // a newer turn started before this one finished playing: that one settles instead
+      if (id === turnId) set({ settled: to })
+    })
   },
 }))
 
@@ -109,6 +122,7 @@ function turn(from: number, to: number, done: () => void, setOutfit: (o: Outfit)
   tl.call(() => bus.emit('milo', b.miloReact ?? 'wave'), [], T.popUpAt + 0.6)
 
   tl.call(done, [], at + T.turn + (closing && dir > 0 ? 0.8 : 0))
+  return tl
 }
 
 /** "Read again": the book turns over and riffles back to the front cover. */
@@ -153,19 +167,18 @@ function flipBack(from: number, done: () => void, setOutfit: (o: Outfit) => void
   }
   tl.call(() => bus.emit('milo', 'wave'), [], t + 0.4)
   tl.call(done, [], t + 0.6)
+  return tl
 }
 
 /**
  * Which spreads are mounted: the settled spread and its neighbours (plus the
  * target while a turn is running). Everything else is unmounted so its
  * textures can be freed — important on iPad. The window only slides once a
- * turn has finished, so new pages are prepared while nothing is animating.
+ * turn's whole animation (pop-ups, world) has played out, so the next pages
+ * are loaded and warmed up (scene/Prewarm) while nothing is moving.
  */
-let settled = -1
 export function useNearSpreads(): (i: number) => boolean {
   const spread = useBook((s) => s.spread)
-  const busy = useBook((s) => s.busy)
-  if (!busy || settled < 0) settled = spread
-  const a = settled
-  return (i) => Math.abs(i - a) <= 1 || i === spread
+  const settled = useBook((s) => s.settled)
+  return (i) => Math.abs(i - settled) <= 1 || i === spread
 }

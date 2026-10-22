@@ -15,6 +15,7 @@ import { beat } from '../../progress'
 import { heard } from '../../cue'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
+import { PoolPointLight } from '../../scene/lightPool'
 
 /*
  * Spread 1 — "Story time". Built in three layers like a real pop-up:
@@ -429,7 +430,7 @@ function BookGlow() {
     const on = Math.min(1, glow.at ? (performance.now() - glow.at) / 900 : 0)
     ref.current.intensity = l * on * (1.6 + Math.sin(s.clock.elapsedTime * 2.4) * 0.35)
   })
-  return <pointLight ref={ref} position={[0, baseY + 0.45, 0.55]} color="#ffd27a" distance={3} decay={1.4} />
+  return <PoolPointLight ref={ref} position={[0, baseY + 0.45, 0.31]} color="#ffd27a" distance={3} decay={1.4} />
 }
 
 /** The glowing stars: few, big and clear. Each pops out of the book, then flies up into the room. */
@@ -442,10 +443,10 @@ const STAR_FLIGHTS: {
   stroke: string
   spin: number
 }[] = [
-  { at: [-0.8, 0.2], y: 0.6, size: 0.34, to: [-2.55, 0.46, -3.0], fill: '#ffd34d', stroke: '#e08a00', spin: 1 },
-  { at: [-0.3, 0.16], y: 0.86, size: 0.4, to: [-1.1, 0.8, -4.2], fill: '#fff09a', stroke: '#e9a800', spin: -1 },
-  { at: [0.32, 0.16], y: 0.84, size: 0.38, to: [0.23, 0.6, -3.0], fill: '#ffc83a', stroke: '#dc7a00', spin: 1 },
-  { at: [0.82, 0.2], y: 0.6, size: 0.34, to: [2.35, 0.92, -4.2], fill: '#fff09a', stroke: '#e9a800', spin: -1 },
+  { at: [-0.8, -0.04], y: 0.6, size: 0.34, to: [-2.55, 0.46, -3.0], fill: '#ffd34d', stroke: '#e08a00', spin: 1 },
+  { at: [-0.3, -0.08], y: 0.86, size: 0.4, to: [-1.1, 0.8, -4.2], fill: '#fff09a', stroke: '#e9a800', spin: -1 },
+  { at: [0.32, -0.08], y: 0.84, size: 0.38, to: [0.23, 0.6, -3.0], fill: '#ffc83a', stroke: '#dc7a00', spin: 1 },
+  { at: [0.82, -0.04], y: 0.6, size: 0.34, to: [2.35, 0.92, -4.2], fill: '#fff09a', stroke: '#e9a800', spin: -1 },
 ]
 
 /** one big storybook star: ink outline, soft shine and a little face-less sparkle */
@@ -504,8 +505,8 @@ function ReadingPopups() {
       <PopCard art={dadSitting()} size={[0.64, 0.99]} at={[0.62, -0.09]} delay={0.24} rotY={-0.12} idle="sway" idleAmp={0.4} tap="wiggle" px={1024} />
       <PopCard art={miloSitting()} size={[0.42, 0.66]} at={[0.02, -0.24]} y={0.1} delay={0.22} idle="bob" tap="jump" px={1024} />
       {/* front */}
-      <PopCard art={burst} size={[0.96, 0.72]} at={[0, 0.25]} delay={0.3} hinge="spring" lean={0.3} emissive={0.32} tap="none" contact={false} gate={() => glowing()} />
-      <PopCard art={storybook} size={[1.0, 0.66]} at={[0, 0.32]} vfold={0.5} lean={0.16} delay={0.34} emissive={0.18} tap="jump" px={1024} />
+      <PopCard art={burst} size={[0.96, 0.72]} at={[0, 0.01]} delay={0.3} hinge="spring" lean={0.3} emissive={0.32} tap="none" contact={false} gate={() => glowing()} />
+      <PopCard art={storybook} size={[1.0, 0.66]} at={[0, 0.08]} vfold={0.5} lean={0.16} delay={0.34} emissive={0.18} tap="jump" px={1024} />
       <BookGlow />
       {STAR_FLIGHTS.map((f, i) => (
         <PopCard

@@ -27,12 +27,14 @@ const LEAN = 0.72
 
 /* ---------------------------------------------------------------- pacing -- */
 
-/** letters per second: a brisk read-aloud pace */
-const CPS = 17
+/** overall writing speed: every letter, pause and gap below is divided by this */
+const SPEED = 1.5
+/** letters per second: a brisk read-aloud pace (×SPEED) */
+const CPS = 17 * SPEED
 /** extra pause after a word: none / comma / sentence end */
-const PAUSE = [0.07, 0.22, 0.42]
+const PAUSE = [0.07, 0.22, 0.42].map((p) => p / SPEED)
 /** breath between paragraphs */
-const PARA_GAP = 0.4
+const PARA_GAP = 0.4 / SPEED
 /** wait after the card has popped up before the pencil starts */
 const START_DELAY = 0.25
 /** the card's place in its spread's pop-up order (first up) */
@@ -53,9 +55,9 @@ function schedule(boxes: WordBox[], paraCount: number): Schedule {
       para = b.para
       paraStart[para] = t
     }
-    const dur = b.kind === -1 ? b.chars * 0.035 : b.kind === 0 ? 0.55 : b.chars / CPS
+    const dur = b.kind === -1 ? (b.chars * 0.035) / SPEED : b.kind === 0 ? 0.55 / SPEED : b.chars / CPS
     words.push({ ...b, t0: t, t1: t + dur })
-    t += dur + (b.kind === -1 ? 0.3 : b.kind === 0 ? 0.05 : PAUSE[b.pause])
+    t += dur + (b.kind === -1 ? 0.3 / SPEED : b.kind === 0 ? 0.05 : PAUSE[b.pause])
     if (b.para >= 0) paraEnd[b.para] = t
   }
   return { words, paraStart, paraEnd, end: t }

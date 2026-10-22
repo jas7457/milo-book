@@ -21,6 +21,6 @@ anim.presence[spreads[start].world].v = 1
 anim.raise[start].v = 1
 anim.cam.open = start > 0 ? 1 : 0
 anim.envFrom = anim.envTo = spreads[start].palette
-useBook.setState({ spread: start, outfit: spreads[start].outfit })
+useBook.setState({ spread: start, settled: start, outfit: spreads[start].outfit })
 
 createRoot(document.getElementById('root')!).render(<App />)

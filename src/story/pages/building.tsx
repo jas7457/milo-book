@@ -398,7 +398,7 @@ function Windmill() {
     <PopCard
       art={windmill}
       size={[420 * K, 640 * K]}
-      at={[-0.74, -0.88]}
+      at={[-0.74, -0.7]}
       delay={0.04}
       tap="wiggle"
       onTap={() => {
@@ -422,7 +422,7 @@ function Windmill() {
 function Castle() {
   const K = 0.84 / 760
   return (
-    <PopCard art={castle} size={[760 * K, 900 * K]} at={[1.16, -0.92]} delay={0.06} px={1024} tap="wiggle" onTap={() => bus.emit('sfx', 'pop')}>
+    <PopCard art={castle} size={[760 * K, 900 * K]} at={[1.16, -0.7]} delay={0.06} px={1024} tap="wiggle" onTap={() => bus.emit('sfx', 'pop')}>
       <Part
         art={castleFlag}
         size={[150 * K, 100 * K]}
@@ -478,11 +478,11 @@ function BuildPopups() {
       <BuildDirector />
       {/* back: the far bank */}
       <PopCard art={farHills} size={[3.1, 1.07]} at={[0, -1.02]} vfold={0.2} delay={0} px={2048} tap="none" />
-      <PopCard art={bigTree} size={[0.5, 0.7]} at={[-1.42, -0.84]} delay={0.04} rotY={0.2} idle="sway" idleAmp={0.4} tap="wiggle" px={1024} />
-      <PopCard art={bigPine} size={[0.4, 0.61]} at={[-1.12, -0.92]} delay={0.06} idle="sway" idleAmp={0.3} tap="wiggle" px={1024} />
+      <PopCard art={bigTree} size={[0.5, 0.7]} at={[-1.42, -0.58]} delay={0.04} rotY={0.2} idle="sway" idleAmp={0.4} tap="wiggle" px={1024} />
+      <PopCard art={bigPine} size={[0.4, 0.61]} at={[-1.12, -0.68]} delay={0.06} idle="sway" idleAmp={0.3} tap="wiggle" px={1024} />
       <Windmill />
       <Castle />
-      <PopCard art={smallTree} size={[0.42, 0.58]} at={[1.52, -0.62]} delay={0.1} rotY={-0.25} idle="sway" idleAmp={0.4} tap="wiggle" px={1024} />
+      <PopCard art={smallTree} size={[0.42, 0.58]} at={[1.52, -0.56]} delay={0.1} rotY={-0.25} idle="sway" idleAmp={0.4} tap="wiggle" px={1024} />
       {/* middle: the banks, the crane, the truck */}
       <Crane />
       <BridgeFrame />

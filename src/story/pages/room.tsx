@@ -14,6 +14,7 @@ import { Cutout, useWorldId, useWorldLevel } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
 import { miloFigure } from '../../milo/art'
+import { PoolPointLight, PoolSpotLight } from '../../scene/lightPool'
 
 /* ------------------------------------------------------------------ art -- */
 
@@ -323,7 +324,7 @@ function LampLight({ switchable }: { switchable: boolean }) {
   useFrame((s) => {
     light.current.intensity = level() * lampGlow(switchable) * (14 + Math.sin(s.clock.elapsedTime * 3) * 0.4)
   })
-  return <pointLight ref={light} position={[-5.6, 3.6, -4.2]} color="#ffcf8a" distance={14} decay={1.6} />
+  return <PoolPointLight ref={light} position={[-5.6, 3.6, -4.2]} color="#ffcf8a" distance={14} decay={1.6} />
 }
 
 /** The shade: glows while the lamp is on, goes dim and dusty-blue when it's off. */
@@ -459,7 +460,7 @@ function MoonBeam() {
       <mesh ref={beam} geometry={beamGeo} material={beamMat} renderOrder={5} />
       <mesh ref={pool} geometry={poolGeo} material={poolMat} renderOrder={4} />
       <primitive object={target} position={[3.6, 0, -3]} />
-      <spotLight
+      <PoolSpotLight
         ref={spot}
         position={[8.6, 7.2, -9.6]}
         target={target}

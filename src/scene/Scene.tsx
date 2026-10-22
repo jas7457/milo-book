@@ -8,6 +8,8 @@ import { Worlds } from '../world/Worlds'
 import { Milo } from '../milo/Milo'
 import { CameraRig } from './CameraRig'
 import { BookLight } from './BookLight'
+import { LightPool } from './lightPool'
+import { Prewarm } from './Prewarm'
 import { setMaxAnisotropy } from '../art/texture'
 
 export function Scene() {
@@ -22,6 +24,8 @@ export function Scene() {
       <CameraRig />
       <Environment />
       <BookLight />
+      <LightPool />
+      <Prewarm />
       <Worlds />
       <Book />
       <Milo />

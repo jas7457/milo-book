@@ -17,6 +17,7 @@ import { heard } from '../../cue'
 import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
+import { PoolPointLight } from '../../scene/lightPool'
 
 /*
  * Spread 2 — "Fix-it Milo". The stars land Milo in his workshop.
@@ -1120,7 +1121,7 @@ function ShopLightGlow() {
   useFrame((s) => {
     light.current.intensity = lvl() * (12 + Math.sin(s.clock.elapsedTime * 2) * 0.3)
   })
-  return <pointLight ref={light} position={[-1.2, 5.0, -5.6]} color="#fff3d6" distance={16} decay={1.5} />
+  return <PoolPointLight ref={light} position={[-1.2, 5.0, -5.6]} color="#fff3d6" distance={16} decay={1.5} />
 }
 
 /** Milo's workshop — a garage with the door rolled up to the sunny yard. */

@@ -23,6 +23,7 @@ import { beat } from '../../progress'
 import { heard } from '../../cue'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
+import { PoolPointLight, PoolSpotLight } from '../../scene/lightPool'
 
 /*
  * Spread 7 — "Home again". Bedtime.
@@ -206,8 +207,8 @@ function NightFx() {
         <planeGeometry args={[3.2, 2.2]} />
       </mesh>
       <Glow position={[1.15, baseY + 0.005, 0.4]} size={[2.2, 1.5]} color="#ffb860" level={() => open() * lit() * 0.55} flat />
-      <pointLight ref={lampLight} position={[LAMP_AT[0], baseY + 1.05, LAMP_AT[1] + 0.08]} color="#ffc878" distance={2.6} decay={1.4} />
-      <pointLight ref={moonLight} position={[0.8, baseY + 1.0, -0.4]} color="#8fa8ff" distance={3.4} decay={1.3} />
+      <PoolPointLight ref={lampLight} position={[LAMP_AT[0], baseY + 1.05, LAMP_AT[1] + 0.08]} color="#ffc878" distance={2.6} decay={1.4} />
+      <PoolPointLight ref={moonLight} position={[0.8, baseY + 1.0, -0.4]} color="#8fa8ff" distance={3.4} decay={1.3} />
     </>
   )
 }
@@ -471,7 +472,7 @@ function MoonShine() {
       <mesh ref={beam} geometry={beamGeo} material={beamMat} renderOrder={6} />
       <mesh ref={pool} geometry={poolGeo} material={poolMat} renderOrder={3} />
       <primitive object={target} position={[poolMid[0] + 0.25, 0, poolMid[2]]} />
-      <spotLight
+      <PoolSpotLight
         ref={spot}
         position={[WIN_C[0] + 1.0, 2.2, WIN_C[1] - 2.2]}
         target={target}
@@ -601,8 +602,8 @@ function WorldLights() {
   })
   return (
     <>
-      <pointLight ref={porch} position={[3.2, 1.4, -5.4]} color="#ffcf8a" distance={12} decay={1.5} />
-      <pointLight ref={lamp} position={[-5.0, 3.2, -4.2]} color="#ffe3a0" distance={11} decay={1.5} />
+      <PoolPointLight ref={porch} position={[3.2, 1.4, -5.4]} color="#ffcf8a" distance={12} decay={1.5} />
+      <PoolPointLight ref={lamp} position={[-5.0, 3.2, -4.2]} color="#ffe3a0" distance={11} decay={1.5} />
     </>
   )
 }

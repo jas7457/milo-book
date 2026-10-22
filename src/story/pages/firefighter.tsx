@@ -23,6 +23,7 @@ import { heard } from '../../cue'
 import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
+import { PoolPointLight } from '../../scene/lightPool'
 
 /*
  * Spread 5 — "Fire rescue!". Smoke over the bridge: Milo hops onto the big
@@ -466,8 +467,8 @@ function FireLights() {
   })
   return (
     <>
-      <pointLight ref={red} position={[TRUCK_AT[0] + 0.35, baseY + 0.75, TRUCK_AT[1] + 0.2]} distance={2.6} decay={1.6} />
-      <pointLight ref={flames} position={[SHED_AT[0], baseY + 0.3, SHED_AT[1] + 0.3]} color="#ff8a3a" distance={1.8} decay={1.4} />
+      <PoolPointLight ref={red} position={[TRUCK_AT[0] + 0.35, baseY + 0.75, TRUCK_AT[1] + 0.2]} distance={2.6} decay={1.6} />
+      <PoolPointLight ref={flames} position={[SHED_AT[0], baseY + 0.3, SHED_AT[1] + 0.3]} color="#ff8a3a" distance={1.8} decay={1.4} />
     </>
   )
 }

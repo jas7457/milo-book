@@ -6,7 +6,7 @@
 >
 > **Status:** all 9 spreads (0–8) are built, gated and committed. The original brief is kept
 > below because it's still the way to build or rework a spread. Where it disagrees with
-> the code, the code wins. Known stale details: the text pace is now ~17 letters/s, and
+> the code, the code wins. Known stale details: the text pace is now ~25 letters/s (`SPEED` in StoryCard.tsx), and
 > there is also a `scribble` sound.
 
 Project: `/Users/jsonwebdev/src/milo-book` — "Milo to the Rescue!", a code-only (no model files)
@@ -148,7 +148,7 @@ any shared-file change you need from the lead, and the exact test steps for your
 
 The next-page arrow is now **locked until the page is finished**: every
 interaction done *and* all of the story text written. Text is written onto the
-card by a pencil at read-aloud pace (~12.5 letters/s, pauses after commas and
+card by a pencil at a brisk read-aloud pace (~25 letters/s, pauses after commas and
 sentences) — it cannot be skipped. Engine: `src/progress.ts`, `src/book/StoryCard.tsx`.
 
 ### What a spread must do
