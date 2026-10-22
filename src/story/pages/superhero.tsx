@@ -15,6 +15,7 @@ import { useSpread } from '../../popup/SpreadContext'
 import { anim } from '../../state'
 import { clamp01, easeOutBack } from '../../anim/ease'
 import { bus } from '../../bus'
+import { beat } from '../../progress'
 import { Cutout } from '../../world/Cutout'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
@@ -41,13 +42,13 @@ const GRAB = new THREE.Vector3(0.46, 1.62, -0.3)
 const LAND = new THREE.Vector3(1.1, 0.3, 0.55)
 const SAFE_AT: [number, number] = [1.3, 0.8]
 const HEARTS: { dx: number; dz: number; y: number; to: [number, number, number]; s: number }[] = [
-  { dx: -0.18, dz: 0.02, y: 0.34, to: [-3.0, 1.7, -5], s: 0.15 },
+  { dx: -0.18, dz: 0.02, y: 0.34, to: [-2.6, 1.7, -5], s: 0.15 },
   { dx: -0.08, dz: -0.04, y: 0.5, to: [-1.0, 2.1, -6], s: 0.2 },
   { dx: 0.0, dz: 0.04, y: 0.42, to: [1.4, 1.8, -6], s: 0.17 },
-  { dx: 0.1, dz: -0.04, y: 0.54, to: [3.2, 2.2, -7], s: 0.2 },
-  { dx: 0.18, dz: 0.02, y: 0.36, to: [5.0, 1.6, -5], s: 0.15 },
+  { dx: 0.1, dz: -0.04, y: 0.54, to: [2.8, 2.2, -7], s: 0.2 },
+  { dx: 0.18, dz: 0.02, y: 0.36, to: [4.0, 1.6, -5], s: 0.15 },
 ]
-const KITTEN_WORLD: [number, number, number] = [3.8, 0.55, -4.2]
+const KITTEN_WORLD: [number, number, number] = [3.1, 0.55, -4.2]
 
 /* ----------------------------------------------- spread behaviour -- */
 
@@ -136,6 +137,7 @@ function meow(hold = 1.5) {
 function runFlight() {
   fl.phase = 'run'
   killAll()
+  fl.meow = 0
   gsap.to(fl, { hint: 0, duration: 0.3 })
   const u = { v: 0 }
   const tl = story()
@@ -226,6 +228,7 @@ function runFlight() {
       fl.speed = 0
       bus.emit('sfx', 'sparkle')
       bus.emit('milo', 'cheer')
+      beat('superhero', 1) // the kitten is rescued: the "what happened" text can be written
     })
     .to(fl, { carry: 0, safe: 1, duration: 0.45, ease: 'back.out(2.2)' })
     .to(fl, { pulse: 1, duration: 0.2, ease: 'power2.out' }, '<')
@@ -250,6 +253,7 @@ function runFlight() {
 /** Put everything back at the start (for another go). */
 function rewind(then: () => void) {
   killAll()
+  fl.meow = 0
   if (fl.escaped) {
     bus.emit('pull', 'hearts')
     bus.emit('pull', 'kitten')
@@ -297,6 +301,7 @@ function SkyDirector() {
   })
   return null
 }
+
 
 /* ------------------------------------------------- tiny helpers -- */
 
@@ -685,10 +690,10 @@ export const heroSpread: SpreadDef = {
   palette: palettes.sky,
   outfit: 'superhero',
   heading: 'Super Milo',
+  beats: 1,
   text: [
-    `Then... *"Meow!"* A tiny kitten was stuck on the tallest tower!`,
-    'Milo put on his cape. *Up, up and away!*',
-    'He scooped her up and flew her *safe and sound*.',
+    `Oh no! A tiny kitten was stuck on the *tallest tower*! *"Meow!"* Milo put on his cape. Help him *fly*!`,
+    { after: 1, text: '*Up, up and away!* Milo scooped her up, looped the loop, and landed *safe and sound*.' },
   ],
   spreadArt: heroSpreadArt,
   Popups: HeroPopups,

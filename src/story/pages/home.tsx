@@ -20,6 +20,7 @@ import { useSpread } from '../../popup/SpreadContext'
 import { Cutout, useWorldLevel } from '../../world/Cutout'
 import { anim } from '../../state'
 import { bus } from '../../bus'
+import { beat } from '../../progress'
 import { palettes } from '../palettes'
 import type { SpreadDef } from '../types'
 
@@ -55,6 +56,7 @@ function toggleLights(index: number) {
   gsap.killTweensOf(night)
   gsap.to(night, { dark: night.target, duration: off ? 1.7 : 0.9, ease: 'power2.inOut' })
   if (off) {
+    beat('home', 1) // lights out: the bedtime ending can be written
     bus.emit('sfx', 'sparkle')
     bus.emit('milo', 'wave')
     calls.push(gsap.delayedCall(0.9, () => bus.emit('sfx', 'sparkle')))
@@ -84,6 +86,7 @@ function HomeDirector() {
   })
   return null
 }
+
 
 /* ----------------------------------------------- little light helpers -- */
 
@@ -239,10 +242,10 @@ const GLOW_STARS: [number, number, number][] = [
 
 /** world-space places the mobile's stars drift off to */
 const STAR_FLIGHTS: { dx: number; y: number; to: [number, number, number]; s: number }[] = [
-  { dx: -0.26, y: 0.84, to: [-4.8, 1.2, -3.0], s: 0.16 },
+  { dx: -0.26, y: 0.84, to: [-4.2, 1.2, -3.0], s: 0.16 },
   { dx: -0.12, y: 0.72, to: [-2.8, 1.5, -4.0], s: 0.14 },
   { dx: 0.12, y: 0.74, to: [-0.8, 1.2, -3.0], s: 0.15 },
-  { dx: 0.26, y: 0.86, to: [-6.0, 0.8, -2.4], s: 0.17 },
+  { dx: 0.26, y: 0.86, to: [-5.2, 0.8, -2.4], s: 0.17 },
 ]
 
 const DIM_SPECS = [
@@ -429,7 +432,7 @@ function HomePopups() {
         <Fade art={windowNightOverlay} size={[WINDOW.w, WINDOW.h]} pivot={[0, WINDOW.h / 2, 0]} px={1024} level={dark} />
         <Glow position={[0.13, 0.576, 0.01]} size={[0.8, 0.8]} color="#fff4c4" level={() => dark() * 0.7} />
       </PopCard>
-      <PopCard art={toyChest} size={[0.6, 0.44]} at={[-1.18, -0.42]} delay={0.14} rotY={0.25} px={768} tap="wiggle" />
+      <PopCard art={toyChest} size={[0.6, 0.44]} at={[-0.52, -0.8]} delay={0.14} rotY={0.1} px={768} tap="wiggle" />
       {glowSizes.map((g, i) => (
         <GlowStar key={i} at={g.at} y={g.y} rotY={g.rotY} s={g.s} i={i} />
       ))}
@@ -571,10 +574,11 @@ export const homeSpread: SpreadDef = {
   palette: palettes.bedtime,
   outfit: 'pajamas',
   heading: 'Home again',
+  beats: 1,
+  textCard: { x: 0, y: 0.56, w: 0.75 },
   text: [
-    'The sky turned pink, then purple. Time to go *home*.',
-    'Mom and Dad gave Milo the biggest, squeeziest *hug*.',
-    `"What an adventure!" Milo yawned. *Goodnight, Milo.*`,
+    'Home at last! Mom and Dad gave Milo the biggest, squeeziest *hug*. Now it was time for bed. Can you turn the *lights out*?',
+    { after: 1, text: `The moon peeked in. The stars went *twinkle, twinkle*. "What an adventure!" yawned Milo. *Goodnight, Milo.*` },
   ],
   spreadArt: homeSpreadArt,
   Popups: HomePopups,
