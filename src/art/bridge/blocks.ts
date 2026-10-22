@@ -16,7 +16,8 @@ type Variant = { body: string; dark: string; light: string; trim: string; mark: 
 export const VARIANTS: Variant[] = [
   { body: '#e8322b', dark: '#b8221c', light: '#f26a5e', trim: '#ffd0c8', mark: '#fff' },
   { body: '#f4b400', dark: '#c98a00', light: '#ffd75a', trim: '#fff0b8', mark: '#fff' },
-  { body: '#3a8be0', dark: '#2a5fb0', light: '#78b4f2', trim: '#cfe6ff', mark: '#fff' },
+  // green, not blue: blue vanished against the river
+  { body: '#22a84a', dark: '#16793a', light: '#5fd47e', trim: '#d2f5da', mark: '#fff' },
 ]
 
 const bridgeRails = (w: number, postsAt: number[]) => `

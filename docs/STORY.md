@@ -158,11 +158,11 @@ has finished writing.
   the treasure map, a truck waiting on the left bank, and three coloured arch
   blocks.
 - **Interactions:** **drag the three blocks into their gaps**, in any order.
-  - Red goes in the left gap, yellow in the middle and blue on the right.
+  - Red goes in the left gap, yellow in the middle and green on the right (green, not blue, so it stands out against the river).
   - Each gap has a dashed outline and a bouncing arrow in its block's colour.
     They (and the blocks' glow) only appear once the card writes "Pop the
     blocks in the *gaps!*".
-  - The blocks start side by side in a row: red, yellow, blue.
+  - The blocks start side by side in a row: red, yellow, green.
   - When all three are in, the bridge is built in the book *and* in the world.
     Confetti flies, the sign changes to "HOORAY", and the truck drives across.
   - The beat count is the number of blocks placed.

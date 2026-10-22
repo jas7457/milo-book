@@ -93,7 +93,7 @@ function BuildDirector() {
   return null
 }
 
-/** block `k` (red, yellow, blue) goes into its own slot `k`, in any order */
+/** block `k` (red, yellow, green) goes into its own slot `k`, in any order */
 function place(k: number) {
   if (bridge.slots[k] >= 0) return
   bridge.slots[k] = k
@@ -440,7 +440,7 @@ function Castle() {
 
 /**
  * One row at the same depth with clear gaps (blocks are ~0.37 wide), in slot
- * order: red, yellow, blue left to right, so each reads as its own colour.
+ * order: red, yellow, green left to right, so each reads as its own colour.
  */
 const dragBlocks: { v: number; at: [number, number] }[] = [
   { v: 0, at: [0.62, 0.86] },
@@ -448,7 +448,7 @@ const dragBlocks: { v: number; at: [number, number] }[] = [
   { v: 2, at: [1.42, 0.86] },
 ]
 
-/** the three blocks to carry across: red, yellow and blue each fit the slot with their own colour */
+/** the three blocks to carry across: red, yellow and green each fit the slot with their own colour */
 function Blocks() {
   return (
     <>
