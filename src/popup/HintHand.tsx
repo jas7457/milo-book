@@ -5,6 +5,7 @@ import { svgDoc } from '../art/texture'
 import { useSvgTexture } from '../art/useSvgTexture'
 import { INK } from '../art/style'
 import { HAND_AFTER, handTurn, idleSecs, lastInputAt, newHintId, wantHand } from './hint'
+import { useProgress } from '../progress'
 
 /* A friendly white cartoon glove, pointing down; the fingertip is the bottom centre. */
 const HAND_W = 220
@@ -84,7 +85,7 @@ export function HintHand({
     st.rest += dt
 
     if (st.phase === 'off') {
-      if (w && handTurn(id) && st.wantT > HAND_AFTER && idleSecs() > HAND_AFTER && st.rest > 3.2) {
+      if (w && handTurn(id) && st.wantT > HAND_AFTER && idleSecs() > HAND_AFTER && st.rest > 3.2 && !useProgress.getState().writing) {
         st.phase = 'run'
         st.t = 0
         st.hk = 0

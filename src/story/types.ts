@@ -2,6 +2,13 @@ import type { FC } from 'react'
 import type { Outfit, Palette } from '../state'
 
 /**
+ * One story paragraph. A plain string is written in as soon as the page opens;
+ * `{ after: n, text }` waits until the reader has done interaction n
+ * (see `beat()` in progress.ts), so the words can describe what just happened.
+ */
+export type Para = string | { after: number; text: string }
+
+/**
  * A spread = what you see when the book is open at one place:
  * left page (text) + right page (printed backdrop) + pop-ups + a world.
  * Spread 0 is the closed cover.
@@ -12,8 +19,16 @@ export type SpreadDef = {
   world: string
   palette: Palette
   outfit: Outfit
-  /** story text (one entry per paragraph), printed on a card on the left page */
-  text?: string[]
+  /**
+   * Story text (one entry per paragraph), written onto a card on the left
+   * page at read-aloud pace. The card is sized for ALL paragraphs up front.
+   */
+  text?: Para[]
+  /**
+   * How many interactions the reader must complete before the next-page arrow
+   * unlocks. Call `beat(id, n)` (progress.ts) as each one is done. Default 0.
+   */
+  beats?: number
   /**
    * Where the text card sits on the left page, in 0..1 page units
    * (x, y = top-left, w = width; height fits the text). Default: lower left.

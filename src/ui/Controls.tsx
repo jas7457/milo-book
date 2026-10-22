@@ -3,12 +3,14 @@ import { useBook } from '../store'
 import { spreads } from '../story/spreads'
 import { unlockAudio } from '../sfx'
 import { ui } from '../state'
+import { useProgress } from '../progress'
 
 /** Big friendly page-turn buttons, page dots, keyboard + swipe. */
 export function Controls() {
   const spread = useBook((s) => s.spread)
   const busy = useBook((s) => s.busy)
   const go = useBook((s) => s.go)
+  const done = useProgress((p) => !!p.done[spreads[spread].id])
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -63,9 +65,11 @@ export function Controls() {
         <svg viewBox="0 0 40 40"><path d="M25 8 L12 20 L25 32" /></svg>
       </button>
       <button
-        className={'turn next' + (spread === 0 ? ' hint' : '')}
-        aria-label="Next page"
-        disabled={spread === last || busy}
+        className={
+          'turn next' + (spread === 0 ? ' hint' : '') + (!done ? ' locked' : spread > 0 && spread < last ? ' ready' : '')
+        }
+        aria-label={done ? 'Next page' : 'Finish this page first'}
+        disabled={spread === last || busy || !done}
         onClick={() => go(1)}
       >
         <svg viewBox="0 0 40 40"><path d="M15 8 L28 20 L15 32" /></svg>

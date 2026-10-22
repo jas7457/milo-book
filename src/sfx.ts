@@ -59,7 +59,29 @@ function tone(freq: number, to: number, dur: number, type: OscillatorType = 'sin
   o.stop(t + dur + 0.05)
 }
 
+/** a soft pencil scratch, one per written word */
+function scribble() {
+  if (!ctx || !master) return
+  const t = ctx.currentTime
+  const dur = 0.12 + Math.random() * 0.1
+  const src = ctx.createBufferSource()
+  src.buffer = noiseBuffer(ctx, dur + 0.05)
+  const hp = ctx.createBiquadFilter()
+  hp.type = 'bandpass'
+  hp.frequency.value = 2600 + Math.random() * 1400
+  hp.Q.value = 0.9
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.exponentialRampToValueAtTime(0.05, t + 0.02)
+  g.gain.setValueAtTime(0.05 * (0.6 + Math.random() * 0.4), t + dur * 0.5)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+  src.connect(hp).connect(g).connect(master)
+  src.start(t)
+  src.stop(t + dur + 0.05)
+}
+
 const sounds: Record<string, () => void> = {
+  scribble,
   flip,
   pop: () => tone(420 + Math.random() * 200, 900, 0.14, 'sine', 0.35),
   giggle: () => {

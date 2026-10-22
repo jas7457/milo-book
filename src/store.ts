@@ -5,6 +5,7 @@ import { anim, type Outfit, type Palette } from './state'
 import { spreads } from './story/spreads'
 import { bus } from './bus'
 import { mixPalette } from './story/palettes'
+import { isDone, resetProgress } from './progress'
 
 type Store = {
   spread: number
@@ -25,6 +26,9 @@ export const useBook = create<Store>((set, get) => ({
     const { spread: from, busy } = get()
     const to = from + dir
     if (busy || to < 0 || to >= spreads.length) return
+    // you have to finish a page (its interactions + its story) before moving on
+    if (dir > 0 && !isDone(spreads[from].id)) return
+    resetProgress(spreads[to].id)
     set({ busy: true, spread: to })
     turn(from, to, () => set({ busy: false }), (outfit) => set({ outfit }))
   },

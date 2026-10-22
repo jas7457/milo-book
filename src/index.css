@@ -73,6 +73,42 @@ canvas {
 .turn.hint:not(:disabled) {
   animation: nudge 1.4s ease-in-out infinite;
 }
+/* next page not unlocked yet: a quiet grey button that ignores taps */
+.turn.locked,
+.turn.locked:disabled {
+  background: #b9ad9c;
+  box-shadow: 0 6px 0 #8a7f70, 0 10px 24px rgba(60, 30, 10, 0.2);
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+  animation: none;
+}
+/* just unlocked: pop, then keep glowing + nudging until it's tapped */
+.turn.ready:not(:disabled) {
+  animation: unlockPop 0.7s cubic-bezier(0.3, 1.8, 0.5, 1) both, nudge 1.4s ease-in-out 0.8s infinite,
+    readyGlow 1.4s ease-in-out 0.8s infinite;
+}
+@keyframes unlockPop {
+  0% {
+    transform: scale(0.7);
+    background: #b9ad9c;
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes readyGlow {
+  0%,
+  100% {
+    box-shadow: 0 6px 0 #9c3517, 0 10px 24px rgba(60, 30, 10, 0.35), 0 0 0 0 rgba(255, 228, 92, 0.75);
+  }
+  50% {
+    box-shadow: 0 6px 0 #9c3517, 0 10px 24px rgba(60, 30, 10, 0.35), 0 0 0 16px rgba(255, 228, 92, 0);
+  }
+}
 @keyframes nudge {
   0%,
   100% {

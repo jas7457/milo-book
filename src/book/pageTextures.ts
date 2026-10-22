@@ -127,10 +127,26 @@ function tokenize(line: string): Tok[] {
   return out
 }
 
+/** A laid-out word (or the drop cap / heading) on the story card, in card px. */
+export type WordBox = {
+  x0: number
+  x1: number
+  top: number
+  bottom: number
+  baseline: number
+  chars: number
+  para: number
+  /** -1 = heading, 0 = drop cap, 1 = a normal word */
+  kind: -1 | 0 | 1
+  /** pause after it: 0 none, 1 comma-ish, 2 sentence end */
+  pause: 0 | 1 | 2
+}
+
 /**
  * Lay out story text: left-aligned, with a big drop cap on the first
  * paragraph. Words in *stars* are bold in the accent colour.
- * Returns the total height; draws only when `draw` is true.
+ * Returns the total height; draws only when `draw` is true and records every
+ * word's box in `boxes` (if given).
  */
 function layoutText(
   ctx: CanvasRenderingContext2D,
@@ -141,6 +157,7 @@ function layoutText(
   size: number,
   accent: string,
   draw: boolean,
+  boxes?: WordBox[],
 ) {
   const lh = size * 1.3
   const font = (em: boolean) => `${em ? 700 : 600} ${size}px ${FONT}`
@@ -152,6 +169,10 @@ function layoutText(
       w += ctx.measureText(t.tail).width
     }
     return w
+  }
+  const spaceW = () => {
+    ctx.font = font(false)
+    return ctx.measureText(' ').width
   }
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
@@ -170,6 +191,10 @@ function layoutText(
         ctx.fillStyle = accent
         ctx.fillText(cap, x - size * 0.04, cy + lh - size * 0.08)
       }
+      boxes?.push({
+        x0: x - size * 0.1, x1: x + capW - size * 0.1, top: cy - size * 1.05, bottom: cy + lh + size * 0.3,
+        baseline: cy + lh - size * 0.08, chars: 3, para: pi, kind: 0, pause: 0,
+      })
     }
     const lines: Tok[][] = [[]]
     let lw = 0
@@ -185,8 +210,8 @@ function layoutText(
     }
     lines.forEach((line, li) => {
       let cx = x + (li < 2 ? capW : 0)
-      if (draw)
-        for (const t of line) {
+      for (const t of line) {
+        if (draw) {
           ctx.font = font(t.em)
           ctx.fillStyle = t.em ? accent : '#2e2017'
           ctx.fillText(t.word, cx, cy)
@@ -196,8 +221,18 @@ function layoutText(
             ctx.fillStyle = '#2e2017'
             ctx.fillText(t.tail, cx + ww, cy)
           }
-          cx += width(t)
         }
+        const ww = width(t)
+        const full = t.word + (t.tail ?? '')
+        const last = full[full.length - 1] ?? ''
+        if (boxes && full.length)
+          boxes.push({
+            x0: cx - 2, x1: cx + ww - spaceW() + 2, top: cy - size * 1.0, bottom: cy + size * 0.3,
+            baseline: cy, chars: full.length, para: pi, kind: 1,
+            pause: /[.!?…]/.test(last) ? 2 : /[,;:]/.test(last) ? 1 : 0,
+          })
+        cx += ww
+      }
       cy += lh
     })
     if (pi === 0 && lines.length < 2) cy += lh * (2 - lines.length)
@@ -220,25 +255,38 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.roundRect(x, y, w, h, r)
 }
 
-/** Story-card layout, in logical px (the canvas is drawn at 2× for crisp text). */
-const CARD = { w: 900, size: 54, pad: 52, head: 54, scale: 2 }
+/** Story-card layout, in logical px (the ink is drawn at 2× for crisp text). */
+export const CARD = { w: 900, size: 54, pad: 52, head: 54, scale: 2 }
+
+export type StoryCardArt = {
+  /** the card itself: paper, border (1×) */
+  paper: THREE.CanvasTexture
+  /** all the words on transparent (2×) — revealed by the writing shader */
+  ink: THREE.CanvasTexture
+  /** card px size */
+  w: number
+  h: number
+  aspect: number
+  boxes: WordBox[]
+}
 
 /**
- * The story card as its own crisp texture. It stands up off the left page as
- * a propped-up pop-up card, angled toward the reader, so the words aren't
- * squashed by the page's perspective. Resolves once fonts are ready.
+ * The story card's art: paper and ink as separate textures so the words can
+ * be "written" in (see StoryCard). The card is sized for every paragraph,
+ * including the ones that only appear after an interaction.
  */
-export async function storyCardTexture(s: SpreadDef) {
+export async function storyCardTexture(s: SpreadDef): Promise<StoryCardArt> {
   await waitFonts()
   const accent = inkAccent(s.palette.accent)
+  const paras = (s.text ?? []).map((p) => (typeof p === 'string' ? p : p.text))
   const { w, size, pad, scale } = CARD
   const headH = s.heading ? CARD.head : 0
   const probe = makeCanvas(8, 8).getContext('2d')!
-  const textH = layoutText(probe, s.text ?? [], 0, 0, w - pad * 2, size, accent, false)
+  const textH = layoutText(probe, paras, 0, 0, w - pad * 2, size, accent, false)
   const h = Math.ceil(pad * 2 + headH + textH)
-  const canvas = makeCanvas(w * scale, h * scale)
-  const ctx = canvas.getContext('2d')!
-  ctx.scale(scale, scale)
+
+  const pc = makeCanvas(w, h)
+  const ctx = pc.getContext('2d')!
   ctx.fillStyle = '#fdf8ec'
   roundRect(ctx, 0, 0, w, h, 26)
   ctx.fill()
@@ -250,18 +298,28 @@ export async function storyCardTexture(s: SpreadDef) {
   roundRect(ctx, 14, 14, w - 28, h - 28, 16)
   ctx.stroke()
   ctx.restore()
+
+  const ic = makeCanvas(w * scale, h * scale)
+  const ink = ic.getContext('2d')!
+  ink.scale(scale, scale)
+  const boxes: WordBox[] = []
   if (s.heading) {
-    ctx.save()
-    ctx.font = `600 28px ${FONT}`
-    ctx.fillStyle = accent
-    ctx.letterSpacing = '6px'
-    ctx.fillText(s.heading.toUpperCase(), pad, pad + 22)
-    ctx.restore()
+    ink.save()
+    ink.font = `600 28px ${FONT}`
+    ink.fillStyle = accent
+    ink.letterSpacing = '6px'
+    const label = s.heading.toUpperCase()
+    ink.fillText(label, pad, pad + 22)
+    const hw = ink.measureText(label).width
+    ink.restore()
+    boxes.push({ x0: pad - 4, x1: pad + hw + 4, top: pad - 10, bottom: pad + 34, baseline: pad + 22, chars: label.length, para: -1, kind: -1, pause: 0 })
   }
-  layoutText(ctx, s.text ?? [], pad, pad + headH, w - pad * 2, size, accent, true)
-  const tex = finish(canvas, false)
-  tex.anisotropy = 16
-  return { tex, aspect: w / h }
+  layoutText(ink, paras, pad, pad + headH, w - pad * 2, size, accent, true, boxes)
+
+  const paper = finish(pc, false)
+  const inkTex = finish(ic, false)
+  inkTex.anisotropy = 16
+  return { paper, ink: inkTex, w, h, aspect: w / h, boxes }
 }
 
 function fibresIn(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {

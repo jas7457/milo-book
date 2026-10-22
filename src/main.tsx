@@ -10,6 +10,8 @@ import App from './App'
 
 initAnim(spreads.length, [...new Set(spreads.map((s) => s.world))])
 import { useBook } from './store'
+import { initProgress } from './progress'
+initProgress(spreads)
 
 // ?page=N jumps straight to a spread (handy while authoring)
 const start = Math.min(spreads.length - 1, Math.max(0, Number(new URLSearchParams(location.search).get('page') ?? 0) || 0))

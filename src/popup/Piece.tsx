@@ -33,6 +33,8 @@ export type PieceProps = {
   art: string
   /** a ready-made texture instead of SVG art (e.g. the canvas story card) */
   map?: THREE.Texture
+  /** a ready-made material (used instead of the paper material made from the art) */
+  material?: THREE.Material
   /** width, height in world units; the pivot is the bottom-centre of the art */
   size: [number, number]
   position: [number, number, number]
@@ -102,11 +104,11 @@ export function Piece(props: PieceProps & { level: () => number }) {
   const {
     art, size, position, rotY = 0, hinge = 'back', lean = 0, idle = 'none', idleAmp = 1, idleSpeed = 1,
     tap = 'jump', onTap, onGrab, escape, emissive, px = 768, map, shadow = true, flat = false, level, children, vfold,
-    contact = !flat, hint,
+    contact = !flat, hint, material,
   } = props
   const [w, h] = size
   const tex = useSvgTexture(art, px, map)
-  const mat = useMemo(() => paperMaterial(tex, { emissive }), [tex, emissive])
+  const mat = useMemo(() => material ?? paperMaterial(tex, { emissive }), [material, tex, emissive])
   const outer = useRef<THREE.Group>(null!)
   const hingeG = useRef<THREE.Group>(null!)
   const idleG = useRef<THREE.Group>(null!)
