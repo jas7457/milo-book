@@ -119,3 +119,15 @@ Small recurring friends are welcome (Robo the teal robot from tools.tsx can came
 
 What you built (layers, interaction, world), screenshots you checked, anything that doesn't work,
 any shared-file change you need from the lead, and the exact test steps for your interaction.
+
+## Update from the lead (after code review)
+
+- Story timelines: if you chain `gsap.timeline()`s with `.add(() => bus.emit(...))` callbacks, keep
+  them in a module-level array and `kill()` them in your Director when the page turns away (see
+  `story()` / `timelines` in `tools.tsx`), otherwise sounds and escapes fire on the next page.
+- `DragPiece` has a new optional prop `holdSfx` (sound repeated while holding over the target,
+  default `'drill'`), e.g. `holdSfx="whoosh"` for a hose.
+- DragPiece and PullTab now track the finger that grabbed them and release on pointercancel and on
+  page turn. No API change.
+- The machine is heavily loaded with several browsers open. Keep screenshots few and close/blank
+  your preview when you're not looking at it.
