@@ -69,6 +69,26 @@ const sounds: Record<string, () => void> = {
     ;[1046, 1318, 1568, 2093].forEach((f, i) => tone(f, f * 1.01, 0.25, 'sine', 0.12, i * 0.07))
   },
   whirr: () => tone(180, 520, 0.6, 'sawtooth', 0.08),
+  /** one burst of a toy drill (played on repeat while drilling) */
+  drill: () => {
+    tone(260, 300, 0.42, 'sawtooth', 0.06)
+    tone(520, 610, 0.42, 'square', 0.025)
+  },
+  /** batteries in: a rising power-up chime */
+  powerup: () => {
+    tone(160, 900, 0.5, 'square', 0.05)
+    ;[523, 659, 784, 1046].forEach((f, i) => tone(f, f, 0.16, 'triangle', 0.14, 0.35 + i * 0.09))
+  },
+  /** a robot's happy chatter */
+  robot: () => {
+    ;[880, 660, 990, 740, 1180].forEach((f, i) => tone(f, f * (i % 2 ? 0.9 : 1.1), 0.08, 'square', 0.06, i * 0.09))
+  },
+  snap: () => tone(1400, 500, 0.06, 'square', 0.12),
+  boing: () => tone(220, 660, 0.35, 'sine', 0.3),
+  zoom: () => {
+    tone(300, 1200, 0.5, 'sawtooth', 0.05)
+    sounds.whoosh()
+  },
   beep: () => {
     tone(880, 880, 0.12, 'square', 0.08)
     tone(880, 880, 0.12, 'square', 0.08, 0.2)

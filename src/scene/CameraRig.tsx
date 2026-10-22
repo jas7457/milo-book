@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { anim } from '../state'
+import { anim, ui } from '../state'
 import { damp } from '../anim/ease'
 
 /**
@@ -32,8 +32,11 @@ export function CameraRig() {
     pos.lerp(look, anim.cam.push * 0.12)
     pos.y += anim.cam.push * 0.25
 
-    cur.px = damp(cur.px, state.pointer.x, 2.5, dt)
-    cur.py = damp(cur.py, state.pointer.y, 2.5, dt)
+    // hold still while something is being dragged, so the page doesn't slide under the finger
+    if (!ui.dragging) {
+      cur.px = damp(cur.px, state.pointer.x, 2.5, dt)
+      cur.py = damp(cur.py, state.pointer.y, 2.5, dt)
+    }
     pos.x += cur.px * 0.45
     pos.y += cur.py * 0.22
 

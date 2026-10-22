@@ -41,6 +41,8 @@ export type PieceProps = {
   idleSpeed?: number
   tap?: Tap
   onTap?: () => void
+  /** raw pointer-down on the piece (used by DragPiece to pick it up) */
+  onGrab?: (e: ThreeEvent<PointerEvent>) => void
   escape?: Escape
   emissive?: number
   px?: number
@@ -89,7 +91,7 @@ function halfPlane(w: number, h: number, half: 0 | 1) {
 export function Piece(props: PieceProps & { level: () => number }) {
   const {
     art, size, position, rotY = 0, hinge = 'back', lean = 0, idle = 'none', idleAmp = 1, idleSpeed = 1,
-    tap = 'jump', onTap, escape, emissive, px = 768, map, shadow = true, flat = false, level, children, vfold,
+    tap = 'jump', onTap, onGrab, escape, emissive, px = 768, map, shadow = true, flat = false, level, children, vfold,
     contact = !flat,
   } = props
   const [w, h] = size
@@ -262,6 +264,9 @@ export function Piece(props: PieceProps & { level: () => number }) {
   })
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
+    // hidden pieces (other worlds, folded spreads) are still in the scene: ignore them
+    if (!outer.current.visible || level() < 0.5) return
+    if (onGrab) return onGrab(e)
     if (tap === 'none' && !onTap) return
     e.stopPropagation()
     bus.emit('sfx', 'pop')
@@ -286,7 +291,9 @@ export function Piece(props: PieceProps & { level: () => number }) {
   const ptr = {
     onPointerDown: onDown,
     onPointerOver: () => {
-      if (tap !== 'none' || onTap) document.body.style.cursor = 'pointer'
+      if (!outer.current.visible) return
+      if (onGrab) document.body.style.cursor = 'grab'
+      else if (tap !== 'none' || onTap) document.body.style.cursor = 'pointer'
     },
     onPointerOut: () => {
       document.body.style.cursor = ''

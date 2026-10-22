@@ -45,6 +45,8 @@ export const anim = {
 export const ui = {
   /** a 3D widget (e.g. a pull tab) owns the current drag: don't swipe-turn */
   grab: false,
+  /** something is being dragged right now: hold the camera parallax still */
+  dragging: false,
 }
 
 export function initAnim(spreadCount: number, worldIds: string[]) {

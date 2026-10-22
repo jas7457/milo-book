@@ -141,6 +141,7 @@ export function PullTab({
       const d = drag.current
       if (!d) return
       drag.current = null
+      ui.dragging = false
       document.body.style.cursor = ''
       if (d.moved < 10) {
         // a tap: slide it out for them
@@ -161,6 +162,7 @@ export function PullTab({
     e.stopPropagation()
     if (windowed(anim.raise[index].v, delay) < 0.99) return
     ui.grab = true
+    ui.dragging = true
     gsap.killTweensOf(st)
     drag.current = { x: e.nativeEvent.clientX, moved: 0 }
     document.body.style.cursor = 'grabbing'
@@ -192,7 +194,7 @@ export function PullTab({
         {/* a generous invisible grab area for small fingers */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[TW * 0.3, 0.001, 0]} onPointerDown={down} {...hover}>
           <planeGeometry args={[TW * 0.8, 0.3]} />
-          <meshBasicMaterial visible={false} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
         </mesh>
       </group>
       <mesh material={mats.label} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]} onPointerDown={down} {...hover} receiveShadow>
